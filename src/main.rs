@@ -9,9 +9,9 @@ use log::{error, info};
 use pingora::prelude::*;
 use simplelog::*;
 use std::collections::HashMap;
+use std::env;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -42,33 +42,46 @@ fn main() {
             Some(n) => n,
         };
         let path = &path::resolve(&command_opts.config, &rel_file_name);
-        println!("{}", path);
-        let mut file = File::open(Path::new(&path)).expect("Failed to open file");
+        let mut file = File::open(&path).expect("Failed to open file");
         let mut toml_str = String::new();
         file.read_to_string(&mut toml_str)
             .expect("Failed to read file");
         toml::from_str(toml_str.as_str()).unwrap()
     };
 
+    #[inline(always)]
+    fn create_log(level: LevelFilter, path: &Option<String>) -> Box<dyn SharedLogger> {
+        let path = match path {
+            None => None,
+            Some(path) => {
+                let path = path::resolve(env::current_exe().unwrap().to_str().unwrap(), path);
+                match path::create(&path) {
+                    Ok(_) => Some(path),
+                    Err(error) => {
+                        println!("{}", error.to_string());
+                        println!(
+                            "Failed to init {} logger, fallback to terminal.",
+                            level.as_str()
+                        );
+                        None
+                    }
+                }
+            }
+        };
+        match path {
+            Some(path) => WriteLogger::new(level, Config::default(), File::create(path).unwrap()),
+            None => TermLogger::new(
+                level,
+                Config::default(),
+                TerminalMode::Mixed,
+                ColorChoice::Auto,
+            ),
+        }
+    }
+
     CombinedLogger::init(vec![
-        WriteLogger::new(
-            LevelFilter::Info,
-            Config::default(),
-            File::create(match &config.log.access {
-                None => "/var/log/pingpong/access.log",
-                Some(path) => path,
-            })
-            .unwrap(),
-        ),
-        WriteLogger::new(
-            LevelFilter::Error,
-            Config::default(),
-            File::create(match &config.log.error {
-                None => "/var/log/pingpong/error.log",
-                Some(path) => path,
-            })
-            .unwrap(),
-        ),
+        create_log(LevelFilter::Info, &config.log.access),
+        create_log(LevelFilter::Error, &config.log.error),
     ])
     .unwrap();
 
