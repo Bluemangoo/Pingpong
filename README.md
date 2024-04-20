@@ -1,6 +1,8 @@
 # Pingpong
 
-Reverse proxy powered by [Pingora](https://github.com/cloudflare/pingora)
+Reverse proxy powered by [Pingora](https://github.com/cloudflare/pingora).
+
+> Pingpong. Doesn't the little bouncing-around ball resembles your data packets tossed around among NATs and ISPs?
 
 ## Installation and Usage
 
