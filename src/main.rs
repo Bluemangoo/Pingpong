@@ -2,16 +2,15 @@ mod config;
 mod gateway;
 mod util;
 
+use crate::config::Importable;
 use crate::gateway::Gateway;
 use crate::util::path;
-use config::*;
-use log::{error, info};
+use log::{error};
 use pingora::prelude::*;
 use simplelog::*;
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
-use std::io::Read;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -27,26 +26,12 @@ struct CommandOpt {
 fn main() {
     let command_opts = CommandOpt::from_args();
 
-    let config: config::config::Config = {
-        let mut file = File::open(&command_opts.config).expect("Failed to open file");
-        let mut toml_str = String::new();
-        file.read_to_string(&mut toml_str)
-            .expect("Failed to read file");
-        toml::from_str(toml_str.as_str()).unwrap()
-    };
-
-    let servers: HashMap<String, server::Server> = {
-        let default_path = "proxy.toml".to_string();
-        let rel_file_name = match &config.proxy.file {
-            None => &default_path,
-            Some(n) => n,
-        };
-        let path = &path::resolve(&command_opts.config, &rel_file_name);
-        let mut file = File::open(&path).expect("Failed to open file");
-        let mut toml_str = String::new();
-        file.read_to_string(&mut toml_str)
-            .expect("Failed to read file");
-        toml::from_str(toml_str.as_str()).unwrap()
+    let config_base: Importable<config::ConfigRaw> = Importable::Import(command_opts.config);
+    let config: config::Config = {
+        let c = config_base
+            .import(env::current_exe().unwrap().to_str().unwrap())
+            .unwrap();
+        config::Config::from_raw(c.0, &c.1).unwrap()
     };
 
     #[inline(always)]
@@ -87,13 +72,11 @@ fn main() {
 
     let mut server = Server::new(Some(command_opts.base_opts)).unwrap();
 
-    info!("Configuration: {:?}", server.configuration);
-
     server.bootstrap();
 
-    for i in servers {
+    for i in config.server {
         let port = u16::from_str(&i.0).unwrap();
-        let mut service_config: HashMap<String, (String, server::Source)> = HashMap::new();
+        let mut service_config: HashMap<String, (String, config::Source)> = HashMap::new();
 
         for source in i.1.source {
             match &source.1.sni {

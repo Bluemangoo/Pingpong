@@ -1,5 +1,5 @@
-[proxy]
-file = "proxy.toml"  # optional, based on this file's dir.
+[server] # importable structure, see server.toml
+import = "server.toml"
 
 [log]
 access = "/var/log/pingpong/access.log"     # optional.

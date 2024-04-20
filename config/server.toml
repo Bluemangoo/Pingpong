@@ -1,16 +1,18 @@
-[3000]
+[6188]
 threads = 5                     # optional.
 #sni.cert = "/path/to/cert.pem"  # optional.
 #sni.key = "/path/to/cert.key"   # optional.
 
-[3000.source.npx-serve]
+[6188.source.service1] # importable structure
 ip = "127.0.0.1"
 port = 32913
 ssl = false
 
-[3000.source.npx-serve-ip]
+[6188.source.service2]
 ip = "127.18.0.2"
 port = 40201
 ssl = false
 sni = "dev.bluemangoo.net"  # optional. The unset one is default.
 host = "dev.bluemangoo.net" # optional, rewrite `Host` in request headers.
+headers_request = { } # optional and importable, add or replace the header in request
+headers_response = { } # optional and importable, add or replace the header in upstream response

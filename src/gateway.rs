@@ -1,13 +1,10 @@
-use crate::config::server::Source;
+use crate::config::Source;
 use async_trait::async_trait;
 use log::{error, info};
 use pingora::http::ResponseHeader;
-use pingora::listeners::ALPN;
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
-use pingora::protocols::l4::socket::SocketAddr;
-use pingora::upstreams::peer::{PeerOptions, Scheme};
 use pingora::{Error, HTTPStatus};
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
 use std::net::ToSocketAddrs;
 use std::time::Duration;
 
@@ -31,46 +28,30 @@ impl Gateway {
 
         let mut addrs_iter = addr.to_socket_addrs().unwrap();
         let addr = addrs_iter.next().unwrap();
-        Box::new(HttpPeer {
-            _address: SocketAddr::Inet(addr),
-            scheme: Scheme::from_tls_bool(source.1.ssl),
-            sni: domain,
-            proxy: None,
-            client_cert_key: None,
-            options: PeerOptions {
-                bind_to: None,
-                connection_timeout: Some(Duration::new(3, 0)),
-                total_connection_timeout: None,
-                read_timeout: None,
-                idle_timeout: None,
-                write_timeout: None,
-                verify_cert: source.1.ssl,
-                verify_hostname: source.1.ssl,
-                alternative_cn: None,
-                alpn: ALPN::H1,
-                ca: None,
-                tcp_keepalive: None,
-                no_header_eos: false,
-                h2_ping_interval: None,
-                max_h2_streams: 1,
-                extra_proxy_headers: BTreeMap::new(),
-                curves: None,
-                second_keyshare: true, // default true and noop when not using PQ curves
-                tracer: None,
-            },
-        })
+
+        let mut peer = HttpPeer::new(addr, source.1.ssl, domain);
+
+        peer.options.connection_timeout = Some(Duration::new(3, 0));
+
+        Box::new(peer)
     }
+}
+
+pub struct GatewayCTX {
+    pub source_match: Option<String>,
 }
 
 #[async_trait]
 impl ProxyHttp for Gateway {
-    type CTX = ();
-    fn new_ctx(&self) -> Self::CTX {}
+    type CTX = GatewayCTX;
+    fn new_ctx(&self) -> Self::CTX {
+        GatewayCTX { source_match: None }
+    }
 
     async fn upstream_peer(
         &self,
         session: &mut Session,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> pingora::Result<Box<HttpPeer>> {
         let sni = match session.downstream_session.get_header("Host") {
             None => "",
@@ -81,12 +62,14 @@ impl ProxyHttp for Gateway {
             None => match self.routes.get("") {
                 None => {
                     error!("[{}] No route match for {}", self.port, sni);
-                    return Err(Box::new(*Error::new(HTTPStatus(502))));
+                    return Err(Error::new(HTTPStatus(502)));
                 }
                 Some(source) => source,
             },
             Some(source) => source,
         };
+
+        ctx.source_match = Some(String::from(&source.0));
 
         info!(
             "[{}.{}]: {} {} {:?}",
@@ -97,15 +80,17 @@ impl ProxyHttp for Gateway {
             session.downstream_session.req_header().headers
         );
 
-        match &source.1.host {
-            Some(domain) => {
+        if let Some(domain) = &source.1.host {
+            session.req_header_mut().insert_header("Host", domain)?;
+        };
+
+        if let Some(heads) = &source.1.headers_request {
+            for head in heads {
                 session
                     .req_header_mut()
-                    .insert_header("Host", domain)
-                    .expect("Failed");
+                    .insert_header(String::from(head.0), head.1)?;
             }
-            None => {}
-        };
+        }
 
         let peer = self.peer(source);
 
@@ -126,18 +111,30 @@ impl ProxyHttp for Gateway {
         &self,
         _session: &mut Session,
         upstream_response: &mut ResponseHeader,
-        _ctx: &mut Self::CTX,
+        ctx: &mut Self::CTX,
     ) -> pingora::Result<()>
     where
         Self::CTX: Send + Sync,
     {
         // replace any existing header
-        upstream_response
-            .insert_header("Server", "Pingpong")
-            .unwrap();
+        upstream_response.insert_header("Server", "Pingpong")?;
 
         // doesnt support h3
         upstream_response.remove_header("alt-svc");
+
+        if let Some(source_match) = &ctx.source_match {
+            let source: &(String, Source) = match self.routes.get(source_match) {
+                None => self.routes.get("").unwrap(),
+                Some(source) => source,
+            };
+
+            if let Some(heads) = &source.1.headers_response {
+                for head in heads {
+                    upstream_response.insert_header(String::from(head.0), head.1)?;
+                }
+            }
+        }
+
         Ok(())
     }
 }
