@@ -1,0 +1,32 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
+      with:
+        cache-provider: buildjet
+    - name: Build
+      run: cargo build --release
+    - name: Pack
+      run: |
+        mkdir target/pack || rm -rf target/pack/*
+        mv target/release/pingpong target/pack/pingpong
+        cp -r config target/pack/config
+        zip -q -r target/pack/pingpong.zip target/pack/*
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: pingpong.zip
+        path: target/pack/pingpong.zip
