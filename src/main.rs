@@ -5,12 +5,12 @@ mod util;
 use crate::config::Importable;
 use crate::gateway::Gateway;
 use crate::util::path;
-use log::{error};
+use log::error;
 use pingora::prelude::*;
 use simplelog::*;
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -54,7 +54,15 @@ fn main() {
             }
         };
         match path {
-            Some(path) => WriteLogger::new(level, Config::default(), File::create(path).unwrap()),
+            Some(path) => WriteLogger::new(
+                level,
+                Config::default(),
+                OpenOptions::new()
+                    .write(true)
+                    .append(true)
+                    .open(path)
+                    .unwrap(),
+            ),
             None => TermLogger::new(
                 level,
                 Config::default(),
