@@ -21,12 +21,11 @@ jobs:
       run: cargo build --release
     - name: Pack
       run: |
-        mkdir target/pack || rm -rf target/pack/*
-        mv target/release/pingpong target/pack/pingpong
-        cp -r config target/pack/config
-        zip -q -r target/pack/pingpong.zip target/pack/*
+        mkdir target/pingpong || rm -rf target/pingpong/*
+        mv target/release/pingpong target/pingpong/pingpong
+        cp -r config target/pingpong/config
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
         name: pingpong.zip
-        path: target/pack/pingpong.zip
+        path: target/pingpong
