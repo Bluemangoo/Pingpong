@@ -1,6 +1,18 @@
-[server] # importable structure, see server.toml
-import = "server.toml"
+# version = 1                             # Optional, the version of the config, currently it is a constant 1
+# pid_file = "/path/to/pidfile"           # Optional, the path to the pid file
+# upgrade_sock = "/path/to/upgrade/socket"# Optional, the path to the upgrade socket.
+# threads = 1                             # Optional, number of threads per service
+# user = "pingora"                        # Optional, the user the pingora server should be run under after daemonization
+# group = "pingora"                       # Optional, the group the pingora server should be run under after daemonization
+# client_bind_to_ipv4 = []                # Optional, source IPv4 addresses to bind to when connecting to server
+# client_bind_to_ipv6 = []                # Optional, source IPv6 addresses to bind to when connecting to server
+# ca_file = "/path/to/root/ca/file"       # Optional, The path to the root CA file
+# work_stealing = true                    # Optional, Enable work stealing runtime (default true). See Pingora runtime (WIP) section for more info
+# upstream_keepalive_pool_size = 1        # Optional, The number of total connections to keep in the connection pool
 
 [log]
-access = "/var/log/pingpong/access.log"     # optional.
-error = "/var/log/pingpong/error.log"       # optional.
+access = "/var/log/pingpong/access.log" # optional.
+error = "/var/log/pingpong/error.log"   # optional.
+
+[server] # importable structure, see server.toml
+import = "server.toml"

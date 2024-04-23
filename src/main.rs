@@ -14,9 +14,34 @@ use std::fs::OpenOptions;
 use std::str::FromStr;
 use structopt::StructOpt;
 
+#[derive(StructOpt, Debug)]
+#[structopt(name = "basic")]
+pub struct Opt {
+    #[structopt(short, long)]
+    pub upgrade: bool,
+    #[structopt(short, long)]
+    pub daemon: bool,
+    #[structopt(long)]
+    pub nocapture: bool,
+    #[structopt(short, long)]
+    pub test: bool,
+}
+
+impl Into<Option<pingora::prelude::Opt>> for Opt {
+    fn into(self) -> Option<pingora::prelude::Opt> {
+        Some(pingora::prelude::Opt {
+            upgrade: self.upgrade,
+            daemon: self.daemon,
+            nocapture: self.nocapture,
+            test: self.test,
+            conf: None,
+        })
+    }
+}
+
 #[derive(StructOpt)]
 struct CommandOpt {
-    #[structopt(short = "i", default_value = "config/pingpong.toml")]
+    #[structopt(short = "c", default_value = "config/pingpong.toml")]
     config: String,
 
     #[structopt(flatten)]
@@ -78,7 +103,9 @@ fn main() {
     ])
     .unwrap();
 
-    let mut server = Server::new(Some(command_opts.base_opts)).unwrap();
+    let mut server = Server::new(command_opts.base_opts).unwrap();
+
+    config.merge_into_pingora_config(&mut server.configuration);
 
     server.bootstrap();
 
