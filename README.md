@@ -59,3 +59,25 @@ Properties of Source:
 - `host`: Optional, rewrite `Host` in request headers. Fill if upstream service also use sni to recognize route.
 - `headers_request`: `Map<String, String>`. Optional and importable, add or replace the header in request.
 - `headers_response`: `Map<String, String>`. Optional and importable, add or replace the header in response.
+
+## Build
+
+**You can find the latest build in [Actions](https://github.com/Bluemangoo/Pingpong/actions/workflows/build.yml).**
+
+Makesure you have cargo and rustc installed.
+
+### Build from scratch
+
+```bash
+cargo build
+```
+
+If successful, you can find the excutable binary here: `target/debug/pingpong`
+
+### Build optimised one
+
+```bash
+cargo build --release
+```
+
+If successful, you can find the excutable binary here: `target/release/pingpong`
