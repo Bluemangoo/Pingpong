@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  push:
+    branches: []
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, aarch64-unknown-linux-gnu, x86_64-apple-darwin, aarch64-apple-darwin]
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install targets
+      run: rustup target add ${{ matrix.target }}
+    - uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: v0-rust-${{ matrix.target }}
+        cache-provider: buildjet
+    - name: Build
+      run: cargo build --release --target ${{ matrix.target }}
+    - name: Pack
+      run: |
+        mkdir target/pingpong || rm -rf target/pingpong/*
+        mv target/release/pingpong target/pingpong/pingpong
+        cp -r config target/pingpong/config
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: pingpong-${{ matrix.target }}.zip
+        path: target/pingpong
