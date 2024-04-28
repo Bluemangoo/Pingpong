@@ -8,13 +8,69 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  release-linux:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.host_os }}
     strategy:
       matrix:
-        target: [x86_64-unknown-linux-gnu, i686-unknown-linux-gnu, aarch64-unknown-linux-gnu]
+        target:
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - arm-unknown-linux-gnueabi
+          - armv7-unknown-linux-musleabihf
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
+      
+        include:
+          - target: aarch64-apple-darwin
+            host_os: macos-latest
+            packages: ""
+
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-latest
+            packages: "qemu-user gcc-aarch64-linux-pnu libc6-dev-arm64-cross"
+
+          - target: aarch64-unknown-linux-musl
+            host_os: ubuntu-latest
+            packages: ""
+
+          - target: arm-unknown-linux-gnueabi
+            host_os: ubuntu-latest
+            packages: ""
+
+          - target: armv7-unknown-linux-musleabihf
+            host_os: ubuntu-latest
+            packages: ""
+
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-latest
+            packages: "gcc-multilib libc6-dev-i386"
+
+          - target: i686-unknown-linux-musl
+            host_os: ubuntu-latest
+            packages: ""
+
+          - target: x86_64-apple-darwin
+            host_os: macos-latest
+            pavkages: ""
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-latest
+            packages: ""
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-latest
+            packages: ""
     steps:
     - uses: actions/checkout@v4
+    - name: Install deps
+      if: ${{ contains(matrix.host_os, 'ubuntu') }}
+      run: |
+        sudo apt-get update -y
+        sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
     - name: Install targets
       run: rustup target add ${{ matrix.target }}
     - uses: Swatinem/rust-cache@v2
@@ -33,29 +89,4 @@ jobs:
       with:
         name: pingpong-${{ matrix.target }}.zip
         path: target/pingpong
-  
-  release-macos:
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        target: [x86_64-apple-darwin, i686-apple-darwin, aarch64-apple-darwin]
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install targets
-      run: rustup target add ${{ matrix.target }}
-    - uses: Swatinem/rust-cache@v2
-      with:
-        prefix-key: v0-rust-${{ matrix.target }}
-        cache-provider: buildjet
-    - name: Build
-      run: cargo build --release --target ${{ matrix.target }}
-    - name: Pack
-      run: |
-        mkdir target/pingpong || rm -rf target/pingpong/*
-        mv target/release/pingpong target/pingpong/pingpong
-        cp -r config target/pingpong/config
-    - name: Upload
-      uses: actions/upload-artifact@v4
-      with:
-        name: pingpong-${{ matrix.target }}.zip
-        path: target/pingpong
+
