@@ -31,7 +31,7 @@ jobs:
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
-            packages: "qemu-user gcc-aarch64-linux-pnu libc6-dev-arm64-cross"
+            packages: "qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross"
 
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-latest
