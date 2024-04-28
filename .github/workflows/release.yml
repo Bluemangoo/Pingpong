@@ -83,7 +83,7 @@ jobs:
     - name: Pack
       run: |
         mkdir target/pingpong || rm -rf target/pingpong/*
-        mv target/release/pingpong target/pingpong/pingpong
+        mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
         cp -r config target/pingpong/config
     - name: Upload
       uses: actions/upload-artifact@v4
