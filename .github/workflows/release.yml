@@ -39,11 +39,11 @@ jobs:
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
-            packages: ""
+            packages: "arm-none-linux-gnueabi-gcc ia32-libs"
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
-            packages: ""
+            packages: "arm-linux-musleabihf-gcc ia32-libs"
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
@@ -70,12 +70,12 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
-    - name: Install targets
-      run: rustup target add ${{ matrix.target }}
     - uses: Swatinem/rust-cache@v2
       with:
         prefix-key: v0-rust-${{ matrix.target }}
         cache-provider: buildjet
+    - name: Install targets
+      run: rustup target add ${{ matrix.target }}
     - name: Build
       run: cargo build --release --target ${{ matrix.target }}
     - name: Pack
