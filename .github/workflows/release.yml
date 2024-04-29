@@ -58,7 +58,7 @@ jobs:
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-latest
-            packages: "musl-gcc"
+            packages: ""
 
           - target: x86_64-unknown-linux-gnu
             host_os: ubuntu-latest
