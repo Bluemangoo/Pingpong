@@ -31,7 +31,7 @@ jobs:
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
-            packages: "qemu-user gcc-aarch64-linux-gnu libc6-dev-arm64-cross"
+            packages: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu"
 
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-latest
@@ -39,11 +39,11 @@ jobs:
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
-            packages: "arm-none-linux-gnueabi-gcc ia32-libs"
+            packages: "arm-none-linux-gnueabi-gcc binutils-arm-linux-gnueabi"
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
-            packages: "arm-linux-musleabihf-gcc ia32-libs"
+            packages: "arm-linux-musleabihf-gcc"
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
