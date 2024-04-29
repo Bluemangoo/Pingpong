@@ -76,7 +76,7 @@ jobs:
         cache-provider: buildjet
     - name: Install cross
       if: ${{ matrix.cross }}
-      run: cargo binstall cross
+      run: cargo install cross
     - name: Install targets
       if: ${{ !matrix.cross }}
       run: rustup target add ${{ matrix.target }}
