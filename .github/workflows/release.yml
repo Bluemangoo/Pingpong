@@ -2,15 +2,26 @@ name: Release
 
 on:
   push:
-    branches: []
+    branches: ["master"]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.commits[0].message, '[Release]')"
+    steps:
+    - name: Get version
+      run: version=$(grep -m 1 version Cargo.toml | tr -s ' ' | tr -d '"' | tr -d "'")
+    - name: Check git tag
+      run: |
+        git rev-parse $version && exit 1 || true     
+      
   build:
-    continue-on-error: true
     runs-on: ${{ matrix.host_os }}
+    if: "contains(github.event.commits[0].message, '[Release]')"
     strategy:
       matrix:
         target:
@@ -76,9 +87,6 @@ jobs:
       with:
         prefix-key: v0-rust-build-${{ matrix.target }}
         cache-all-crates: true
-    - name: Cache Docker
-      uses: satackey/action-docker-layer-caching@v0.0.11
-      continue-on-error: true
     - name: Install cross
       if: ${{ matrix.cross }}
       run: cargo install cross
@@ -96,9 +104,36 @@ jobs:
         mkdir target/pingpong || rm -rf target/pingpong/*
         mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
         cp -r config target/pingpong/config
+        cd target/pingpong
+        zip -r pingpong-${{ matrix.target }}.zip *
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
-        name: pingpong-${{ matrix.target }}.zip
-        path: target/pingpong
-
+        name: pingpong-${{ matrix.target }}
+        path: target/pingpong/pingpong-${{ matrix.target }}.zip
+  release:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.commits[0].message, '[Release]')"
+    steps: 
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with: 
+        path: artifacts
+        merge-multiple: true
+    - name: Get version
+      run: version=$(grep version Cargo.toml | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+    - name: Generate release info
+      run: |
+        release_info=release.md
+        echo "## Changes" > $release_info
+        number=$(git log --oneline master ^`git describe --tags --abbrev=0` | wc -l)
+        echo "$(git log --pretty='> [%h] %s' -$number)" >> $release_info
+    - name: Create Release
+      if: "!contains(github.event.commits[0].message, '[release-skip]')"
+      uses: ncipollo/release-action@v1.12.0
+      with:
+        artifacts: artifacts/*
+        bodyFile: ${{ env.release_info }}
+        tag: ${{ env.version }}
+        name: ${{ env.version }}
+        makeLatest: true
