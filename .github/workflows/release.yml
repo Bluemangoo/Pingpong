@@ -17,6 +17,8 @@ jobs:
     if: "contains(github.event.commits[0].message, '[Release]')"
     steps:
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Check git tag
       run: sh .github/workflows/check.sh
   build:
@@ -119,6 +121,8 @@ jobs:
     if: "contains(github.event.commits[0].message, '[Release]')"
     steps: 
     - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
     - name: Download artifacts
       uses: actions/download-artifact@v4
       with: 
