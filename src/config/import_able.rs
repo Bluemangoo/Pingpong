@@ -1,4 +1,5 @@
 use crate::util::path;
+use anyhow::anyhow;
 use serde::de::{Error, IntoDeserializer};
 use serde::{Deserialize, Deserializer};
 use std::fs::File;
@@ -31,7 +32,7 @@ where
     }
 }
 
-impl<'de, T> Importable<T>
+impl<T> Importable<T>
 where
     T: serde::de::DeserializeOwned,
 {
@@ -40,10 +41,12 @@ where
             Importable::Some(v) => Ok((v, String::from(base))),
             Importable::Import(path) => {
                 let path = path::resolve(base, &path);
-                let mut file = File::open(&path)?;
+                let mut file = File::open(&path).or(Err(anyhow!("Cannot read file {}", &path)))?;
                 let mut toml_str = String::new();
-                file.read_to_string(&mut toml_str)?;
-                let t: T = toml::from_str(toml_str.as_str())?;
+                file.read_to_string(&mut toml_str)
+                    .or(Err(anyhow!("Cannot read file {}", &path)))?;
+                let t: T = toml::from_str(toml_str.as_str())
+                    .map_err(|err| anyhow!("Failed to parse {}: {}", &path, err.message()))?;
                 Ok((t, path))
             }
         }
