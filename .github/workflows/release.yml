@@ -86,7 +86,6 @@ jobs:
     - name: Install deps
       if: ${{ contains(matrix.host_os, 'ubuntu') && !matrix.cross }}
       run: |
-        sudo dpkg --add-architecture arm64
         sudo apt-get update -y
         sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
     - name: Cache Rust
@@ -103,7 +102,9 @@ jobs:
       run: cargo install cross
     - name: Install targets
       if: ${{ !matrix.cross }}
-      run: rustup target add ${{ matrix.target }}
+      run: |
+        rustup target add ${{ matrix.target }}
+        rustup toolchain install stable-${{ matrix.target }}
     - name: Build
       if: ${{ !matrix.cross }}
       run: cargo build --release --target ${{ matrix.target }}
