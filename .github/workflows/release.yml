@@ -49,19 +49,18 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
             packages: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu"
-            option: "linker = '/usr/bin/aarch64-linux-gnu-gcc'\n ar = '/usr/bin/aarch64-linux-gnu-ar'"
 
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-latest
-            cross: true
+            packages: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu musl-tools"
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
-            cross: true
+            packages: "gcc-arm-linux-gnueabihf"
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
-            cross: true
+            packages: "gcc-arm-linux-gnueabihf"
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
@@ -69,7 +68,7 @@ jobs:
 
           - target: i686-unknown-linux-musl
             host_os: ubuntu-latest
-            cross: true
+            packages: "gcc-multilib libc6-dev-i386"
 
           - target: x86_64-apple-darwin
             host_os: macos-latest
@@ -93,7 +92,10 @@ jobs:
       with:
         prefix-key: v0-rust-build-${{ matrix.target }}
         cache-all-crates: true
-    - run: cat ~/.cargo/config
+    - name: Rewrite config
+      run: |
+        rm -f ~/.cargo/config
+        cp .github/workflows/cargo_config.toml ~/.cargo/config
     - name: Install cross
       if: ${{ matrix.cross }}
       run: cargo install cross
