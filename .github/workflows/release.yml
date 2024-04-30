@@ -20,7 +20,10 @@ jobs:
       with:
         fetch-depth: 0
     - name: Check git tag
-      run: sh .github/workflows/check.sh
+      run: |
+        version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+        git rev-parse $version || exit 0
+        exit 1
   build:
     runs-on: ${{ matrix.host_os }}
     if: "contains(github.event.commits[0].message, '[Release]')"
@@ -85,7 +88,6 @@ jobs:
         sudo apt-get update -y
         sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
     - name: Cache Rust
-      if: ${{ !matrix.cross }}
       uses: Swatinem/rust-cache@v2
       with:
         prefix-key: v0-rust-build-${{ matrix.target }}
@@ -128,7 +130,14 @@ jobs:
         path: artifacts
         merge-multiple: true
     - name: Generate release info and tag
-      run: sh .github/workflows/getReleaseInfo.sh
+      run: |
+        version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+        echo "version=$version">>$GITHUB_ENV
+        release_info=release.md
+        echo "release_info=$release_info">>$GITHUB_ENV
+        echo "## Changes" > $release_info
+        number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
+        echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
     - run: |
         echo ${{env.version}}
         echo ${{env.release_info}}
