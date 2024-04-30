@@ -22,6 +22,7 @@ jobs:
   build:
     runs-on: ${{ matrix.host_os }}
     if: "contains(github.event.commits[0].message, '[Release]')"
+    needs: check
     strategy:
       matrix:
         target:
@@ -112,6 +113,7 @@ jobs:
         name: pingpong-${{ matrix.target }}
         path: target/pingpong/pingpong-${{ matrix.target }}.zip
   release:
+    needs: build
     runs-on: ubuntu-latest
     if: "contains(github.event.commits[0].message, '[Release]')"
     steps: 
