@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: all
+  contents: write
 
 env:
   CARGO_TERM_COLOR: always
