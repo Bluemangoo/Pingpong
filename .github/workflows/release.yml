@@ -97,6 +97,13 @@ jobs:
         use-cross: true
         command: build
         args: --verbose --release --target ${{ matrix.target }}
+    - name: Pack
+      run: |
+        mkdir target/pingpong || rm -rf target/pingpong/*
+        mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
+        cp -r config target/pingpong/config
+        cd target/pingpong
+        zip -r pingpong-${{ matrix.target }}.zip *
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
