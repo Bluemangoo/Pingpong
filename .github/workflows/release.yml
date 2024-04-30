@@ -86,6 +86,7 @@ jobs:
     - name: Install deps
       if: ${{ contains(matrix.host_os, 'ubuntu') && !matrix.cross }}
       run: |
+        sudo dpkg --add-architecture arm64
         sudo apt-get update -y
         sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
     - name: Cache Rust
