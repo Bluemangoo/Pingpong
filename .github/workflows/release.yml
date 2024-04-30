@@ -52,15 +52,15 @@ jobs:
 
           - target: aarch64-unknown-linux-musl
             host_os: ubuntu-latest
-            packages: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu musl-tools"
+            packages: "gcc-aarch64-linux-gnu libc6-dev-arm64-cross binutils-aarch64-linux-gnu musl-dev"
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
-            packages: "gcc-arm-linux-gnueabihf"
+            packages: "gcc-arm-linux-gnueabi"
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
-            packages: "gcc-arm-linux-gnueabihf"
+            packages: "gcc-arm-linux-gnueabihf musl-tools"
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
@@ -68,7 +68,7 @@ jobs:
 
           - target: i686-unknown-linux-musl
             host_os: ubuntu-latest
-            packages: "gcc-multilib libc6-dev-i386"
+            packages: "gcc-multilib libc6-dev-i386 musl-tools"
 
           - target: x86_64-apple-darwin
             host_os: macos-latest
