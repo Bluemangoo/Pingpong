@@ -18,7 +18,7 @@ jobs:
       run: version=$(grep -m 1 version Cargo.toml | tr -s ' ' | tr -d '"' | tr -d "'")
     - name: Check git tag
       run: |
-        git rev-parse $version && exit 1 || true     
+        git rev-parse ${{ env.version }} && exit 1 || true     
       
   build:
     runs-on: ${{ matrix.host_os }}
@@ -124,10 +124,9 @@ jobs:
       with: 
         path: artifacts
         merge-multiple: true
-    - name: Get version
-      run: version=$(grep version Cargo.toml | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
     - name: Generate release info
       run: |
+        version=$(grep version Cargo.toml | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
         release_info=release.md
         echo "## Changes" > $release_info
         number=$(git log --oneline master ^`git describe --tags --abbrev=0` | wc -l)
