@@ -18,7 +18,7 @@ jobs:
       run: version=$(grep -m 1 version Cargo.toml | tr -s ' ' | tr -d '"' | tr -d "'")
     - name: Check git tag
       run: |
-        git rev-parse ${{ env.version }} || exit 0  
+        git rev-parse ${{ env.version }} || exit 0
         exit 1
   build:
     runs-on: ${{ matrix.host_os }}
