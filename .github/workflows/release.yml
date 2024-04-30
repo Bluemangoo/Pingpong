@@ -1,0 +1,152 @@
+name: Release
+
+on:
+  push:
+    branches: []
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: "contains(github.event.commits[0].message, '[Release]')"
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Check git tag
+      run: |
+        version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+        git rev-parse $version || exit 0
+        exit 1
+  build:
+    runs-on: ${{ matrix.host_os }}
+    if: "contains(github.event.commits[0].message, '[Release]')"
+    needs: check
+    strategy:
+      matrix:
+        target:
+          - aarch64-apple-darwin
+          - aarch64-unknown-linux-gnu
+          - aarch64-unknown-linux-musl
+          - arm-unknown-linux-gnueabi
+          - armv7-unknown-linux-musleabihf
+          - i686-unknown-linux-gnu
+          - i686-unknown-linux-musl
+          - x86_64-apple-darwin
+          - x86_64-unknown-linux-musl
+          - x86_64-unknown-linux-gnu
+      
+        include:
+          - target: aarch64-apple-darwin
+            host_os: macos-latest
+
+          - target: aarch64-unknown-linux-gnu
+            host_os: ubuntu-latest
+            cross: true
+
+          - target: aarch64-unknown-linux-musl
+            host_os: ubuntu-latest
+            cross: true
+
+          - target: arm-unknown-linux-gnueabi
+            host_os: ubuntu-latest
+            cross: true
+
+          - target: armv7-unknown-linux-musleabihf
+            host_os: ubuntu-latest
+            cross: true
+
+          - target: i686-unknown-linux-gnu
+            host_os: ubuntu-latest
+            packages: "gcc-multilib libc6-dev-i386"
+
+          - target: i686-unknown-linux-musl
+            host_os: ubuntu-latest
+            cross: true
+
+          - target: x86_64-apple-darwin
+            host_os: macos-latest
+
+          - target: x86_64-unknown-linux-musl
+            host_os: ubuntu-latest
+            packages: "musl-tools"
+
+          - target: x86_64-unknown-linux-gnu
+            host_os: ubuntu-latest
+            packages: ""
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install deps
+      if: ${{ contains(matrix.host_os, 'ubuntu') && !matrix.cross }}
+      run: |
+        sudo apt-get update -y
+        sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
+    - name: Cache Rust
+      uses: Swatinem/rust-cache@v2
+      with:
+        prefix-key: v0-rust-build-${{ matrix.target }}
+        cache-all-crates: true
+    - name: Install cross
+      if: ${{ matrix.cross }}
+      run: cargo install cross
+    - name: Install targets
+      if: ${{ !matrix.cross }}
+      run: rustup target add ${{ matrix.target }}
+    - name: Build
+      if: ${{ !matrix.cross }}
+      run: cargo build --release --target ${{ matrix.target }}
+    - name: Cross build
+      if: ${{ matrix.cross }}
+      run: cross build --release --target ${{ matrix.target }}
+    - name: Pack
+      run: |
+        mkdir target/pingpong || rm -rf target/pingpong/*
+        mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
+        cp -r config target/pingpong/config
+        cd target/pingpong
+        zip -r pingpong-${{ matrix.target }}.zip *
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: pingpong-${{ matrix.target }}
+        path: target/pingpong/pingpong-${{ matrix.target }}.zip
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: "contains(github.event.commits[0].message, '[Release]')"
+    steps: 
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with: 
+        path: artifacts
+        merge-multiple: true
+    - name: Generate release info and tag
+      run: |
+        version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+        echo "version=$version">>$GITHUB_ENV
+        release_info=release.md
+        echo "release_info=$release_info">>$GITHUB_ENV
+        echo "## Changes" > $release_info
+        number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
+        echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
+    - run: |
+        echo ${{env.version}}
+        echo ${{env.release_info}}
+    - name: Create Release
+      if: "!contains(github.event.commits[0].message, '[release-skip]')"
+      uses: ncipollo/release-action@v1.12.0
+      with:
+        artifacts: artifacts/*
+        bodyFile: ${{ env.release_info }}
+        tag: ${{ env.version }}
+        name: ${{ env.version }}
+        makeLatest: true
