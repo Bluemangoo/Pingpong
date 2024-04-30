@@ -70,10 +70,15 @@ jobs:
       run: |
         sudo apt-get update -y
         sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
-    - uses: Swatinem/rust-cache@v2
+    - name: Cache Rust
+      if: ${{ !matrix.cross }}
+      uses: Swatinem/rust-cache@v2
       with:
-        prefix-key: v0-rust-${{ matrix.target }}
-        cache-provider: buildjet
+        prefix-key: v0-rust-build-${{ matrix.target }}
+        cache-all-crates: true
+    - name: Cache Docker
+      uses: satackey/action-docker-layer-caching@v0.0.11
+      continue-on-error: true
     - name: Install cross
       if: ${{ matrix.cross }}
       run: cargo install cross
