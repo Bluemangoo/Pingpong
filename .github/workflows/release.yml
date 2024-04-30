@@ -32,20 +32,20 @@ jobs:
     strategy:
       matrix:
         target:
-          - aarch64-apple-darwin
+          # - aarch64-apple-darwin
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
           - arm-unknown-linux-gnueabi
           - armv7-unknown-linux-musleabihf
-          - i686-unknown-linux-gnu
+          # - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
-          - x86_64-apple-darwin
-          - x86_64-unknown-linux-musl
-          - x86_64-unknown-linux-gnu
+          # - x86_64-apple-darwin
+          # - x86_64-unknown-linux-musl
+          # - x86_64-unknown-linux-gnu
       
         include:
-          - target: aarch64-apple-darwin
-            host_os: macos-latest
+          # - target: aarch64-apple-darwin
+          #   host_os: macos-latest
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
@@ -57,30 +57,30 @@ jobs:
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
-            packages: "gcc-arm-linux-gnueabi"
+            packages: "gcc-arm-linux-gnueabi libc6-dev-arm64-cross"
 
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
-            packages: "gcc-arm-linux-gnueabihf musl-tools"
+            packages: "gcc-arm-linux-gnueabihf libc6-dev-arm64-cross musl-tools musl-dev"
 
-          - target: i686-unknown-linux-gnu
-            host_os: ubuntu-latest
-            packages: "gcc-multilib libc6-dev-i386"
+          # - target: i686-unknown-linux-gnu
+          #   host_os: ubuntu-latest
+          #   packages: "gcc-multilib libc6-dev-i386"
 
           - target: i686-unknown-linux-musl
             host_os: ubuntu-latest
-            packages: "gcc-multilib libc6-dev-i386 musl-tools"
+            packages: "gcc-multilib musl-tools musl-dev"
 
-          - target: x86_64-apple-darwin
-            host_os: macos-latest
+          # - target: x86_64-apple-darwin
+          #   host_os: macos-latest
 
-          - target: x86_64-unknown-linux-musl
-            host_os: ubuntu-latest
-            packages: "musl-tools"
+          # - target: x86_64-unknown-linux-musl
+          #   host_os: ubuntu-latest
+          #   packages: "musl-tools"
 
-          - target: x86_64-unknown-linux-gnu
-            host_os: ubuntu-latest
-            packages: ""
+          # - target: x86_64-unknown-linux-gnu
+          #   host_os: ubuntu-latest
+          #   packages: ""
     steps:
     - uses: actions/checkout@v4
     - name: Install deps
