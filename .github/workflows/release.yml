@@ -83,41 +83,20 @@ jobs:
           #   packages: ""
     steps:
     - uses: actions/checkout@v4
-    - name: Install deps
-      if: ${{ contains(matrix.host_os, 'ubuntu') && !matrix.cross }}
-      run: |
-        sudo apt-get update -y
-        sudo apt-get -yq --no-install-suggests --no-install-recommends install ${{ matrix.packages }}
-    - name: Cache Rust
-      uses: Swatinem/rust-cache@v2
+    - name: Install Rust
+      # 安装Rust的稳定版本
+      # 也可以使用@nightly来下载测试版
+      uses: dtolnay/rust-toolchain@stable
+      # 运行此步骤提供的参数
       with:
-        prefix-key: v0-rust-build-${{ matrix.target }}
-        cache-all-crates: true
-    - name: Rewrite config
-      run: |
-        rm -f ~/.cargo/config
-        cp .github/workflows/cargo_config.toml ~/.cargo/config
-    - name: Install cross
-      if: ${{ matrix.cross }}
-      run: cargo install cross
-    - name: Install targets
-      if: ${{ !matrix.cross }}
-      run: |
-        rustup target add ${{ matrix.target }}
-        rustup toolchain install stable-${{ matrix.target }}
+        # 让Rust编译到我们所需要的平台(这已经定义在matrix关键字里了)
+        targets: ${{ matrix.target }}
     - name: Build
-      if: ${{ !matrix.cross }}
-      run: cargo build --release --target ${{ matrix.target }}
-    - name: Cross build
-      if: ${{ matrix.cross }}
-      run: cross build --release --target ${{ matrix.target }}
-    - name: Pack
-      run: |
-        mkdir target/pingpong || rm -rf target/pingpong/*
-        mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
-        cp -r config target/pingpong/config
-        cd target/pingpong
-        zip -r pingpong-${{ matrix.target }}.zip *
+      uses: actions-rs/cargo@v1
+      with:
+        use-cross: true
+        command: build
+        args: --verbose --release --target ${{ matrix.target }}
     - name: Upload
       uses: actions/upload-artifact@v4
       with:
