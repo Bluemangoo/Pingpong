@@ -3,13 +3,19 @@ linker = "/usr/bin/aarch64-linux-gnu-gcc"
 ar = "/usr/bin/aarch64-linux-gnu-ar"
 
 [target.aarch64-unknown-linux-musl]
-linker = "rust-lld"
+linker = "/usr/bin/aarch64-linux-musl-gcc"
+ar = "/usr/bin/aarch64-linux-musl-ar"
+
 
 [target.arm-unknown-linux-gnueabi]
-linker = "rust-lld"
+linker = "/usr/bin/arm-linux-gnueabi-gcc"
+ar = "/usr/bin/aarch64-linux-gnueabi-ar"
 
 [target.armv7-unknown-linux-musleabihf]
-linker = "rust-lld"
+linker = "/usr/bin/armv7-linux-musleabihf-gcc"
+ar = "/usr/bin/armv7-linux-musleabihf-ar"
 
 [target.i686-unknown-linux-musl]
-linker = "rust-lld"
+linker = "/usr/bin/i686-linux-musl-gcc"
+ar = "/usr/bin/i686-linux-musl-ar"
+
