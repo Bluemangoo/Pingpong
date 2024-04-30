@@ -84,12 +84,8 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install Rust
-      # 安装Rust的稳定版本
-      # 也可以使用@nightly来下载测试版
       uses: dtolnay/rust-toolchain@stable
-      # 运行此步骤提供的参数
       with:
-        # 让Rust编译到我们所需要的平台(这已经定义在matrix关键字里了)
         targets: ${{ matrix.target }}
     - name: Build
       uses: actions-rs/cargo@v1
