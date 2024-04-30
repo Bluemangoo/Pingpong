@@ -5,6 +5,9 @@ on:
     branches: []
   workflow_dispatch:
 
+permissions:
+  contents: all
+
 env:
   CARGO_TERM_COLOR: always
 
