@@ -4,4 +4,4 @@ release_info=release.md
 echo "release_info=$release_info">>$GITHUB_ENV
 echo "## Changes" > $release_info
 number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
-echo "$(git log --pretty='> [%h] %s' -$number)" >> $release_info
+echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
