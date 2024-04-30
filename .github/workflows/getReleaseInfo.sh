@@ -3,6 +3,6 @@ echo $version
 release_info=release.md
 echo $release_info
 echo "## Changes" > $release_info
-number=$(git log --oneline master ^`git describe --tags --abbrev=0` | wc -l)
+number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
 echo $number
 echo "$(git log --pretty='> [%h] %s' -$number)" >> $release_info
