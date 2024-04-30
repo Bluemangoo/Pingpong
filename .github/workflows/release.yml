@@ -123,9 +123,13 @@ jobs:
       with: 
         path: artifacts
         merge-multiple: true
-    - name: Generate release info
+    - name: Generate release info and tag
       run: |
         version=$(grep version Cargo.toml | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git tag $version
+        git push origin $version
         release_info=release.md
         echo "## Changes" > $release_info
         number=$(git log --oneline master ^`git describe --tags --abbrev=0` | wc -l)
