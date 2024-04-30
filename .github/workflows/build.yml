@@ -15,8 +15,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: Swatinem/rust-cache@v2
-      with:
-        cache-provider: buildjet
     - name: Build
       run: cargo build --release
     - name: Pack
