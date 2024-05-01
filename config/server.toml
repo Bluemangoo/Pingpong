@@ -2,6 +2,8 @@
 threads = 5                     # optional.
 #sni.cert = "/path/to/cert.pem"  # optional.
 #sni.key = "/path/to/cert.key"   # optional.
+#check_status = true             # optional, check if source is available, and speedup when unavailable
+#check_duration = 1000           # optional, check duration (ms)
 
 [6188.source.service1] # importable structure
 ip = "127.0.0.1"
@@ -12,7 +14,10 @@ ssl = false
 ip = "127.18.0.2"
 port = 40201
 ssl = false
-sni = "dev.bluemangoo.net"  # optional. The unset one is default.
-host = "dev.bluemangoo.net" # optional, rewrite `Host` in request headers.
-headers_request = { } # optional and importable, add or replace the header in request
-headers_response = { } # optional and importable, add or replace the header in upstream response
+sni = "dev.bluemangoo.net"              # optional. The unset one is default.
+host = "dev.bluemangoo.net"             # optional, rewrite `Host` in request headers.
+headers_request = { }                   # optional and importable, add or replace the header in request
+headers_response = { }                  # optional and importable, add or replace the header in upstream response
+location = ["/"]                         # optional, see the documents.
+#rewrite = ["^/(.*) /service2/$1 break"] # optional, see the documents
+#fallback = ["services1"]                # optional, see the documents.

@@ -6,7 +6,6 @@ use crate::config::Importable;
 use crate::gateway::Gateway;
 use crate::util::path;
 use anyhow::anyhow;
-use log::error;
 use pingora::prelude::*;
 use simplelog::*;
 use std::collections::HashMap;
@@ -108,37 +107,28 @@ fn main() -> anyhow::Result<()> {
 
     for i in config.server {
         let port = u16::from_str(&i.0)?;
-        let mut service_config: HashMap<String, (String, config::Source)> = HashMap::new();
+        let mut service_config: HashMap<String, HashMap<String, config::Source>> = HashMap::new();
 
         for source in i.1.source {
             match &source.1.sni {
                 None => {
-                    if service_config.contains_key("") {
-                        error!(
-                            "[{}] Default server was used by {}, ignored.",
-                            &i.0,
-                            service_config.get("").unwrap().0
-                        );
-                        continue;
+                    if !service_config.contains_key("") {
+                        service_config.insert(String::from(""), HashMap::new());
                     }
-                    service_config.insert(String::from(""), source);
+                    service_config.get_mut("").unwrap().insert(source.0, source.1);
                 }
                 Some(sni) => {
-                    if service_config.contains_key(sni) {
-                        error!(
-                            "[{}] Sni conflict! {} was used by {}, ignored.",
-                            &i.0,
-                            sni,
-                            service_config.get(sni).unwrap().0
-                        );
-                        continue;
+                    if !service_config.contains_key(sni) {
+                        service_config.insert(String::from(sni), HashMap::new());
                     }
-                    service_config.insert(sni.clone(), source);
+                    service_config.get_mut(sni).unwrap().insert(source.0, source.1);
                 }
             }
         }
-        let mut service =
-            http_proxy_service(&server.configuration, Gateway::new(port, service_config));
+        let mut service = http_proxy_service(
+            &server.configuration,
+            Gateway::new(port, service_config, i.1.check_status),
+        );
 
         match i.1.threads {
             None => {}

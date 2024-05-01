@@ -2,7 +2,7 @@ name: Release
 
 on:
   push:
-    branches: []
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
@@ -31,32 +31,20 @@ jobs:
     strategy:
       matrix:
         target:
-          - aarch64-apple-ios
           - aarch64-apple-darwin
-          - aarch64-linux-android
           - aarch64-unknown-linux-gnu
           - aarch64-unknown-linux-musl
           - arm-unknown-linux-gnueabi
-          - armv7-linux-androideabi
           - armv7-unknown-linux-musleabihf
           - i686-unknown-linux-gnu
           - i686-unknown-linux-musl
-          - riscv64gc-unknown-linux-gnu
           - x86_64-apple-darwin
           - x86_64-unknown-linux-musl
           - x86_64-unknown-linux-gnu
 
         include:
-          - target: aarch64-apple-ios
-            host_os: ubuntu-latest
-            cross: true
-
           - target: aarch64-apple-darwin
             host_os: macos-latest
-
-          - target: aarch64-linux-android
-            host_os: ubuntu-latest
-            cross: true
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
@@ -70,10 +58,6 @@ jobs:
             host_os: ubuntu-latest
             cross: true
 
-          - target: armv7-linux-androideabi
-            host_os: ubuntu-latest
-            cross: true
-
           - target: armv7-unknown-linux-musleabihf
             host_os: ubuntu-latest
             cross: true
@@ -83,10 +67,6 @@ jobs:
             packages: "gcc-multilib libc6-dev-i386"
 
           - target: i686-unknown-linux-musl
-            host_os: ubuntu-latest
-            cross: true
-
-          - target: riscv64gc-unknown-linux-gnu
             host_os: ubuntu-latest
             cross: true
 
@@ -158,11 +138,8 @@ jobs:
           echo "## Changes" > $release_info
           number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
           echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
-      - run: |
-          echo ${{env.version}}
-          echo ${{env.release_info}}
       - name: Create Release
-        if: ${{ !contains(github.event.commits[0].message, '[Release]') }}
+        if: ${{ contains(github.event.commits[0].message, '[Release]') }}
         uses: ncipollo/release-action@v1.12.0
         with:
           artifacts: artifacts/*

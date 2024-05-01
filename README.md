@@ -49,6 +49,8 @@ Properties of Server
 
 - `thread`: Thread for this server.
 - `source`: `Map<String, Source>`. Importable, and each source is also importable.
+- `check_status`: Optional, default false, check if source is available, and speedup when unavailable.
+- `check_duration`: Optional, default 1000, duration of per status check (ms).
 
 Properties of Source:
 
@@ -59,12 +61,55 @@ Properties of Source:
 - `host`: Optional, rewrite `Host` in request headers. Fill if upstream service also use sni to recognize route.
 - `headers_request`: `Map<String, String>`. Optional and importable, add or replace the header in request.
 - `headers_response`: `Map<String, String>`. Optional and importable, add or replace the header in response.
+- `location`: Optional, default to match all the requests, see [Location](#location).
+- `rewrite`: Optional, see [Rewrite](#rewrite).
+- `fallback`: Optional, fallback to other sources when available, only works when `check_status` is enabled.
+
+### Location
+
+Location syntax is similar to [Nginx](https://nginx.org/r/location), but here you provide a list of location pattern.
+
+Matching is after decoding the text encoded in the “%XX” form.
+
+Syntax: `[ = | ^ | ~ ] URI`.
+
+There are three type: `=`(equal), `^`(startsWith) and `~`(regex).
+
+**There is a space between type and URI.**
+
+When no type is provided and uri is starts with `/`, type will be `^`(startsWith).
+
+*Why the hell a URI will start without `/`??*
+
+For example:
+
+```toml
+location = ["/public", "~ /static/*.(gif|jpg|jpeg)"]
+```
+
+### Rewrite
+
+Rewrite syntax is similar to [Nginx](https://nginx.org/r/rewrite), but here you provide a list of rewrite pattern.
+
+Matching is after decoding the text encoded in the “%XX” form.
+
+Syntax: `rewrite-regex URI [flag]`.
+
+An optional `flag` parameter can be one of:
+- `last`: The default one, stops processing the current set of rewrite and starts a search for a new location matching the changed URI;
+- `break`: stops processing the current rewrite rule and start to search next.
+
+For example:
+
+```toml
+rewrite = ["^/(.*) /service2/$1 last"]
+```
 
 ## Build
 
-**You can find the latest build in [Actions](https://github.com/Bluemangoo/Pingpong/actions/workflows/build.yml).**
+**You can find the latest x86_64 build in [Actions](https://github.com/Bluemangoo/Pingpong/actions/workflows/build.yml).**
 
-Makesure you have cargo and rustc installed.
+Make sure you have cargo and rustc installed.
 
 ### Build from scratch
 
@@ -72,7 +117,7 @@ Makesure you have cargo and rustc installed.
 cargo build
 ```
 
-If successful, you can find the excutable binary here: `target/debug/pingpong`
+If successful, you can find the executable binary here: `target/debug/pingpong`
 
 ### Build optimised one
 
@@ -80,4 +125,4 @@ If successful, you can find the excutable binary here: `target/debug/pingpong`
 cargo build --release
 ```
 
-If successful, you can find the excutable binary here: `target/release/pingpong`
+If successful, you can find the executable binary here: `target/release/pingpong`
