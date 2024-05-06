@@ -63,7 +63,7 @@ Properties of Source:
 - `headers_response`: `Map<String, String>`. Optional and importable, add or replace the header in response.
 - `location`: Optional, default to match all the requests, see [Location](#location).
 - `rewrite`: Optional, see [Rewrite](#rewrite).
-- `fallback`: Optional, fallback to other sources when available, only works when `check_status` is enabled.
+- `fallback`: Optional, fallback to other sources when available, only works when `check_status` is enabled. Fallback up to 10 times.
 
 ### Location
 
@@ -91,7 +91,7 @@ location = ["/public", "~ /static/*.(gif|jpg|jpeg)"]
 
 Rewrite syntax is similar to [Nginx](https://nginx.org/r/rewrite), but here you provide a list of rewrite pattern.
 
-Matching is after decoding the text encoded in the “%XX” form.
+Matching is after decoding the text encoded in the “%XX” form. Rewrite up to 10 times.
 
 Syntax: `rewrite-regex URI [flag]`.
 
