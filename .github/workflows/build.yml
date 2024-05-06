@@ -9,7 +9,7 @@ env:
 
 jobs:
   build:
-    if: ${{ !contains(github.event.commits[0].message, '[Release]') }}
+    if: ${{ !contains(github.event.commits[0].message, '+release') && !contains(github.event.commits[0].message, '-build') }}
     runs-on: ubuntu-latest
 
     steps:
