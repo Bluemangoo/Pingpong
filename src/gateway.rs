@@ -1,4 +1,6 @@
-use crate::config::{Location, RewriteFlag, Source};
+use crate::config::Source;
+use crate::util::route::*;
+use crate::util::url::encode_ignore_slash;
 use async_trait::async_trait;
 use http::Uri;
 use log::{error, info};
@@ -8,7 +10,7 @@ use pingora::{Error, HTTPStatus};
 use std::collections::HashMap;
 use std::net::ToSocketAddrs;
 use std::time::Duration;
-use urlencoding::encode;
+use urlencoding::decode;
 
 pub struct Gateway {
     port: u16,
@@ -53,92 +55,6 @@ pub struct GatewayCTX {
     pub source: Option<String>,
 }
 
-fn match_route(uri: &str, source: &Source) -> bool {
-    for location in &source.location {
-        if match location {
-            Location::Start(l) => uri.starts_with(l),
-            Location::Equal(l) => uri.eq(l),
-            Location::Regex(re) => re.is_match(uri),
-        } {
-            return true;
-        }
-    }
-    false
-}
-
-fn find_route_with_start<'a>(
-    sni: &'a str,
-    uri: &str,
-    routes: &'a HashMap<String, HashMap<String, Source>>,
-    depth: usize,
-    ctx: &mut GatewayCTX,
-    starts_from: (&'a String, &'a Source),
-) -> pingora::Result<((&'a String, &'a Source), String)> {
-    let mut uri = String::from(encode(uri));
-    let mut result: Option<pingora::Result<((&'a String, &'a Source), String)>> = None;
-    if let Some(rewrites) = &starts_from.1.rewrite {
-        for rewrite in rewrites {
-            if result.is_some() {
-                break;
-            }
-            if rewrite.0.is_match(&uri) {
-                uri = rewrite.0.replace_all(&uri, &rewrite.1).to_string();
-                if let RewriteFlag::Last = rewrite.2 {
-                    result = Some(find_route(sni, &uri, routes, depth + 1, ctx));
-                }
-            }
-        }
-    }
-    match result {
-        None => Ok(((starts_from.0, starts_from.1), String::from(&uri))),
-        Some(result) => result,
-    }
-}
-
-fn find_route<'a>(
-    sni: &'a str,
-    uri: &str,
-    routes: &'a HashMap<String, HashMap<String, Source>>,
-    depth: usize,
-    ctx: &mut GatewayCTX,
-) -> pingora::Result<((&'a String, &'a Source), String)> {
-    if depth >= 10 {
-        Err(Error::new(HTTPStatus(502)))?;
-    }
-    let mut source: Option<(&String, &Source)> = None;
-    if let Some(sni_sources) = routes.get(sni) {
-        ctx.sni = Some(String::from(sni));
-        for s in sni_sources {
-            if match_route(uri, s.1) {
-                source = Some(s);
-            }
-        }
-    };
-    if source.is_none() {
-        if let Some(sni_sources) = routes.get("") {
-            ctx.sni = Some(String::from(""));
-            for s in sni_sources {
-                if match_route(uri, s.1) {
-                    source = Some(s);
-                }
-            }
-        }
-    }
-    match source {
-        None => Err(Error::new(HTTPStatus(502)))?,
-        Some(s) => find_route_with_start(sni, uri, routes, depth, ctx, s),
-    }
-}
-
-fn check_status(source: &Source) -> bool {
-    if let Some(lb) = &source.load_balancer {
-        if lb.select(b"", 256).is_some() {
-            return true;
-        }
-    }
-    false
-}
-
 #[async_trait]
 impl ProxyHttp for Gateway {
     type CTX = GatewayCTX;
@@ -160,13 +76,21 @@ impl ProxyHttp for Gateway {
         };
         let header: &mut RequestHeader = session.req_header_mut();
 
-        let uri = &header.uri.to_string();
-        let uri_raw = String::from(uri);
+        let uri = encode_ignore_slash(&header.uri.to_string()).into_owned();
+        let uri_raw = String::from(&uri);
+
+        info!(
+            "[{}]: {} {} {:?}",
+            self.port, header.method, uri_raw, header.headers
+        );
 
         let (source, uri) = {
             if self.check_status {
                 let mut re: ((&String, &Source), String) =
-                    find_route(&sni, uri, &self.routes, 0, ctx)?;
+                    find_route(&sni, &uri, &self.routes, 0, ctx).map_err(|e| {
+                        error!("[{}]: Failed to find route {}", self.port, &uri_raw);
+                        e
+                    })?;
 
                 for _ in 0..10 {
                     if check_status(re.0 .1) {
@@ -183,7 +107,13 @@ impl ProxyHttp for Gateway {
                                     fallback,
                                     match self.routes.get(&sni).unwrap().get(fallback) {
                                         Some(source) => source,
-                                        None => Err(Error::new(HTTPStatus(502)))?,
+                                        None => {
+                                            error!(
+                                                "[{}]: Failed to find fallback source {}",
+                                                self.port, fallback
+                                            );
+                                            Err(Error::new(HTTPStatus(502)))?
+                                        }
                                     },
                                 ),
                             )?;
@@ -195,7 +125,7 @@ impl ProxyHttp for Gateway {
                 }
                 re
             } else {
-                find_route(&sni, uri, &self.routes, 0, ctx)?
+                find_route(&sni, &uri, &self.routes, 0, ctx)?
             }
         };
 
@@ -206,13 +136,31 @@ impl ProxyHttp for Gateway {
             self.port, source.0, header.method, uri_raw, header.headers
         );
 
-        header.set_uri(uri.parse::<Uri>().or({
-            error!(
-                "[{}.{}]: Failed to parse rewritten uri: {}",
-                self.port, source.0, &uri
-            );
-            Err(Error::new(HTTPStatus(502)))
-        })?);
+        header.set_uri(
+            decode(&uri)
+                .map_err(|e| {
+                    error!(
+                        "[{}.{}]: Failed to parse rewritten uri: {}, {}",
+                        self.port,
+                        source.0,
+                        &uri,
+                        e.to_string()
+                    );
+                    Error::new(HTTPStatus(502))
+                })?
+                .into_owned()
+                .parse::<Uri>()
+                .map_err(|e| {
+                    error!(
+                        "[{}.{}]: Failed to parse rewritten uri: {}, {}",
+                        self.port,
+                        source.0,
+                        &uri,
+                        e.to_string()
+                    );
+                    Error::new(HTTPStatus(502))
+                })?,
+        );
 
         if let Some(domain) = &source.1.host {
             header.insert_header("Host", domain)?;
@@ -225,9 +173,6 @@ impl ProxyHttp for Gateway {
         }
 
         let peer = self.peer(source);
-
-        info!("{:?}", session.req_header_mut());
-        info!("{peer:?}");
         Ok(peer)
     }
 
