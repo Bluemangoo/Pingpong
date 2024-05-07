@@ -79,19 +79,6 @@ impl ProxyHttp for Gateway {
         let uri = encode_ignore_slash(&header.uri.to_string()).into_owned();
         let uri_raw = String::from(&header.uri.to_string());
 
-        info!(
-            "[{}]: {} {} {:?}",
-            self.port,
-            header.method,
-            uri_raw,
-            match header.headers.get("User-Agent") {
-                None => String::from("\"\""),
-                Some(ua) => {
-                    format!("\"{}\"", ua.to_str().unwrap())
-                }
-            }
-        );
-
         let (source, uri) = {
             if self.check_status {
                 let mut re: ((&String, &Source), String) =
@@ -140,8 +127,18 @@ impl ProxyHttp for Gateway {
         ctx.source = Some(String::from(source.0));
 
         info!(
-            "[{}.{}]: {} {} {:?}",
-            self.port, source.0, header.method, uri_raw, header.headers
+            "[{}.{}]: {} \"{}\" \"{}\" \"{}\"",
+            self.port,
+            source.0,
+            header.method,
+            sni,
+            uri_raw,
+            match header.headers.get("User-Agent") {
+                None => "",
+                Some(ua) => {
+                    ua.to_str().unwrap()
+                }
+            }
         );
 
         header.set_uri(
