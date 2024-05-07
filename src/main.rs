@@ -11,6 +11,7 @@ use simplelog::*;
 use std::collections::HashMap;
 use std::env;
 use std::fs::OpenOptions;
+use std::path::Path;
 use std::str::FromStr;
 use structopt::StructOpt;
 
@@ -41,8 +42,8 @@ impl From<Opt> for Option<pingora::prelude::Opt> {
 
 #[derive(StructOpt)]
 struct CommandOpt {
-    #[structopt(short = "c", default_value = "config/pingpong.toml")]
-    config: String,
+    #[structopt(short = "c")]
+    config: Option<String>,
 
     #[structopt(flatten)]
     base_opts: Opt,
@@ -51,9 +52,22 @@ struct CommandOpt {
 fn main() -> anyhow::Result<()> {
     let command_opts = CommandOpt::from_args();
 
-    let config_base: Importable<config::ConfigRaw> = Importable::Import(command_opts.config);
+    let base = env::current_exe()?;
+    let base = base.to_str().unwrap();
+
+    let config_base: Importable<config::ConfigRaw> =
+        Importable::Import(match command_opts.config {
+            None => {
+                if Path::new(&path::resolve(base, "config/pingpong.toml")).exists() {
+                    String::from("config/pingpong.toml")
+                } else {
+                    String::from("/etc/pingpong/pingpong.toml")
+                }
+            }
+            Some(c) => c,
+        });
     let config: config::Config = {
-        let c = config_base.import(env::current_exe()?.to_str().unwrap())?;
+        let c = config_base.import(base)?;
         config::Config::from_raw(c.0, &c.1)?
     };
 
@@ -115,13 +129,19 @@ fn main() -> anyhow::Result<()> {
                     if !service_config.contains_key("") {
                         service_config.insert(String::from(""), HashMap::new());
                     }
-                    service_config.get_mut("").unwrap().insert(source.0, source.1);
+                    service_config
+                        .get_mut("")
+                        .unwrap()
+                        .insert(source.0, source.1);
                 }
                 Some(sni) => {
                     if !service_config.contains_key(sni) {
                         service_config.insert(String::from(sni), HashMap::new());
                     }
-                    service_config.get_mut(sni).unwrap().insert(source.0, source.1);
+                    service_config
+                        .get_mut(sni)
+                        .unwrap()
+                        .insert(source.0, source.1);
                 }
             }
         }

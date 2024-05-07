@@ -10,7 +10,7 @@ Pingora only support Linux and Mac, and Windows won't be supported.
 
 - Download archive file from [release](https://github.com/cloudflare/pingora), and unpack it somewhere.
 - Modify the config file.
-- Run with `pingpong -c /path/to/pingpong.toml`. If config location isn't specified, Pingpong will use `./config/pingpong.toml` based on executable's path.
+- Run with `pingpong -c /path/to/pingpong.toml`. If config location isn't specified, Pingpong will use `./config/pingpong.toml` based on executable's path, or `/etc/pingpong/pingpong.toml`.
 
 ## Commandline Arguments
 
