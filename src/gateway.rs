@@ -77,7 +77,7 @@ impl ProxyHttp for Gateway {
         let header: &mut RequestHeader = session.req_header_mut();
 
         let uri = encode_ignore_slash(&header.uri.to_string()).into_owned();
-        let uri_raw = String::from(&uri);
+        let uri_raw = String::from(&header.uri.to_string());
 
         info!(
             "[{}]: {} {} {:?}",

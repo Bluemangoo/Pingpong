@@ -3,7 +3,7 @@ use std::fmt;
 use std::str;
 
 /// Wrapper type that implements `Display`. Encodes on the fly, without allocating.
-/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`. Assumes UTF-8 encoding.
+/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`. Assumes UTF-8 encoding.
 ///
 /// ```rust
 /// use urlencoding::Encoded;
@@ -20,7 +20,7 @@ impl<String: AsRef<[u8]>> fmt::Display for Encoded<String> {
     }
 }
 
-/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`. Assumes UTF-8 encoding.
+/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`. Assumes UTF-8 encoding.
 ///
 /// Call `.into_owned()` if you need a `String`
 #[inline(always)]
@@ -28,7 +28,7 @@ pub fn encode_ignore_slash(data: &str) -> Cow<str> {
     encode_binary(data.as_bytes())
 }
 
-/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`.
+/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`.
 #[inline]
 fn encode_binary(data: &[u8]) -> Cow<str> {
     // add maybe extra capacity, but try not to exceed allocator's bucket size
@@ -60,7 +60,7 @@ fn encode_into<E>(
     loop {
         // Fast path to skip over safe chars at the beginning of the remaining string
         let ascii_len = data.iter()
-            .take_while(|&&c| matches!(c, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' |  b'-' | b'.' | b'_' | b'~' | b'/')).count();
+            .take_while(|&&c| matches!(c, b'0'..=b'9' | b'A'..=b'Z' | b'a'..=b'z' |  b'-' | b'.' | b'_' | b'~' | b'/' | b'?' | b'&')).count();
 
         let (safe, rest) = if ascii_len >= data.len() {
             if !pushed && may_skip_write {
