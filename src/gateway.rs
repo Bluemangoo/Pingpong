@@ -81,7 +81,15 @@ impl ProxyHttp for Gateway {
 
         info!(
             "[{}]: {} {} {:?}",
-            self.port, header.method, uri_raw, header.headers
+            self.port,
+            header.method,
+            uri_raw,
+            match header.headers.get("User-Agent") {
+                None => String::from("\"\""),
+                Some(ua) => {
+                    format!("\"{}\"", ua.to_str().unwrap())
+                }
+            }
         );
 
         let (source, uri) = {
