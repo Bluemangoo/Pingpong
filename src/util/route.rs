@@ -35,6 +35,7 @@ pub fn find_route_with_start<'a>(
                 uri = rewrite.0.replace_all(&uri, &rewrite.1).to_string();
                 if let RewriteFlag::Last = rewrite.2 {
                     result = Some(find_route(sni, &uri, routes, depth + 1, ctx));
+                    break;
                 }
             }
         }
