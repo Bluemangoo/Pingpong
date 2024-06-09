@@ -24,6 +24,18 @@ jobs:
           version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
           git rev-parse $version || exit 0
           exit 1
+      - name: Generate release info
+        run: |
+          release_info=release.md
+          echo "release_info=$release_info">>$GITHUB_ENV
+          echo "## Commits" > $release_info
+          number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
+          echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
+      - name: Upload release info
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-info
+          path: ${{ env.release_info }}
   build:
     runs-on: ${{ matrix.host_os }}
     if: ${{ contains(github.event.commits[0].message, '+release') }}
@@ -48,6 +60,7 @@ jobs:
 
           - target: aarch64-unknown-linux-gnu
             host_os: ubuntu-latest
+            architecture: arm64
             cross: true
 
           - target: aarch64-unknown-linux-musl
@@ -56,6 +69,7 @@ jobs:
 
           - target: arm-unknown-linux-gnueabi
             host_os: ubuntu-latest
+            architecture: arm
             cross: true
 
           - target: armv7-unknown-linux-musleabihf
@@ -64,6 +78,7 @@ jobs:
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
+            architecture: i386
             packages: "gcc-multilib libc6-dev-i386"
 
           - target: i686-unknown-linux-musl
@@ -79,6 +94,7 @@ jobs:
 
           - target: x86_64-unknown-linux-gnu
             host_os: ubuntu-latest
+            architecture: amd64
             packages: ""
     steps:
       - uses: actions/checkout@v4
@@ -114,8 +130,63 @@ jobs:
       - name: Upload
         uses: actions/upload-artifact@v4
         with:
-          name: pingpong-${{ matrix.target }}
+          name: binary-pingpong-${{ matrix.target }}
           path: target/pingpong/pingpong-${{ matrix.target }}.zip
+      - name: Get build info
+        run: |
+          version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+          echo "version=$version">>$GITHUB_ENV
+      - name: Download release info
+        uses: actions/download-artifact@v4
+        with:
+          name: release-info
+          path: .
+          merge-multiple: true
+      - name: Build deb
+        if: ${{ contains(matrix.target, 'linux-gnu') && matrix.architecture }}
+        run: |
+          sudo apt install -y dpkg-dev
+          mkdir target/deb || rm -rf target/deb/*
+          mkdir -p target/deb/usr/bin
+          mkdir -p target/deb/etc/pingpong
+          mkdir -p target/deb/usr/share/doc/pingpong
+          cp target/${{ matrix.target }}/release/pingpong target/deb/usr/bin/pingpong
+          cp -r config/* target/deb/etc/pingpong
+          gzip -c ../../release_info.md > usr/share/doc/pingpong/changelog.gz
+          cd target/deb
+          mkdir -p DEBIAN
+          echo "Package: pingpong" > DEBIAN/control
+          echo "Version: ${{ env.version }}" >> DEBIAN/control
+          echo "Section: httpd" >> DEBIAN/control
+          echo "Architecture: ${{ matrix.architecture }}" >> DEBIAN/control
+          echo "Maintainer: Bluemangoo <chenfy2006@qq.com>" >> DEBIAN/control
+          echo "Description: Reverse proxy powered by Pingora" >> DEBIAN/control
+          echo " A simple and easy to use reverse proxy" >> DEBIAN/control
+          echo "Homepage: https://github.com/Bluemangoo/Pingpong" >> DEBIAN/control
+          echo "Depends: libc6" >> DEBIAN/control
+          echo "Installed-Size: $(du -s usr | cut -f1)" >> DEBIAN/control
+          echo "/etc/pingpong/pingpong.toml" > DEBIAN/conffiles
+          echo "/etc/pingpong/server.toml" >> DEBIAN/conffiles
+          echo "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/" > DEBIAN/copyright
+          echo "Source: https://github.com/Bluemangoo/Pingpong" >> DEBIAN/copyright
+          echo "" >> DEBIAN/copyright
+          echo "Files: *" >> DEBIAN/copyright
+          echo "Copyright: 2024, Bluemangoo" >> DEBIAN/copyright
+          echo "License: GPL-3" >> DEBIAN/copyright
+          sed 's/^/ /' ../../LICENSE >> DEBIAN/copyright
+          chmod 0644 etc/pingpong/*
+          chmod 0644 usr/share/*
+          chmod 0755 DEBIAN
+          chmod 0644 DEBIAN/*
+          cd ..
+          dpkg-deb --build --root-owner-group deb pingpong-${{ matrix.architecture }}.deb
+      - name: Upload deb
+        if: ${{ contains(matrix.target, 'linux-gnu') && matrix.architecture }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deb-pingpong-${{ matrix.architecture }}
+          path: target/pingpong/pingpong-${{ matrix.architecture }}.deb
+
   release:
     needs: build
     runs-on: ubuntu-latest
@@ -127,6 +198,7 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
+          pattern: binary-*
           path: artifacts
           merge-multiple: true
       - name: Generate release info and tag
