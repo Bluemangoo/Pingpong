@@ -26,6 +26,8 @@ pub struct Opt {
     pub nocapture: bool,
     #[structopt(short, long)]
     pub test: bool,
+    #[structopt(short, long)]
+    pub version: bool,
 }
 
 impl From<Opt> for Option<pingora::prelude::Opt> {
@@ -51,6 +53,11 @@ struct CommandOpt {
 
 fn main() -> anyhow::Result<()> {
     let command_opts = CommandOpt::from_args();
+
+    if command_opts.base_opts.version {
+        println!("Pingpong {}", env!("CARGO_PKG_VERSION"));
+        return Ok(());
+    }
 
     let base = env::current_exe()?;
     let base = base.to_str().unwrap();

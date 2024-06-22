@@ -14,6 +14,7 @@ Pingora only support Linux and Mac, and Windows won't be supported.
 
 ## Commandline Arguments
 
+- `-v`: Print current version.
 - `-i`: The path to the configuration file (of Pingpong).
 
 Followings are for Pingora:
