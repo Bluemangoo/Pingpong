@@ -90,7 +90,7 @@ jobs:
       - name: Cache Rust
         uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: v0-rust-build-${{ matrix.target }}
+          key: v0-rust-build-${{ matrix.target }}
           cache-all-crates: true
       - name: Install cross
         if: ${{ matrix.cross }}
