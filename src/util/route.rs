@@ -57,7 +57,7 @@ pub fn find_route<'a>(
         Err(Error::new(HTTPStatus(502)))?;
     }
     let mut source: Option<(&String, &Source)> = None;
-    if let Some(sni_sources) = routes.get(sni) {
+    if let Some(sni_sources) = routes.get(&sni.to_lowercase()) {
         ctx.sni = Some(String::from(sni));
         for s in sni_sources {
             if match_route(uri, s.1) {

@@ -134,6 +134,7 @@ impl Source {
         } else {
             None
         };
+        let sni = raw.sni.map(|s| s.to_lowercase());
         let location = match raw.location {
             None => vec![Location::Start(String::from("/"))],
             Some(loc) => {
@@ -203,7 +204,7 @@ impl Source {
             port: raw.port,
             ssl: raw.ssl,
             load_balancer,
-            sni: raw.sni,
+            sni,
             location,
             rewrite,
             fallback: raw.fallback.unwrap_or_default(),
