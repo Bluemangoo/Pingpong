@@ -2,7 +2,7 @@
 pref: false
 next: 
     - text: Getting Started
-      link: /getting-started/introduction
+      link: /getting-started/getting-started
 ---
 
 # Introduction
