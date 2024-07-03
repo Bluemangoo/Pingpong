@@ -1,7 +1,7 @@
 ---
-pref: 
-    - text: Introduction
-      link: /getting-started/introduction
+prev: 
+    text: Introduction
+    link: /getting-started/introduction
 next: false
 ---
 

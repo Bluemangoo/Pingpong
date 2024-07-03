@@ -1,8 +1,8 @@
 ---
-pref: false
+prev: false
 next: 
-    - text: Getting Started
-      link: /getting-started/getting-started
+    text: Getting Started
+    link: /getting-started/getting-started
 ---
 
 # Introduction
