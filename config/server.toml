@@ -5,19 +5,30 @@ threads = 5                     # optional.
 #check_status = true             # optional, check if source is available, and speedup when unavailable
 #check_duration = 1000           # optional, check duration (ms)
 
-[6188.source.service1] # importable structure
+[6188.source.proxy1] # importable structure
 ip = "127.0.0.1"
 port = 32913
 ssl = false
 
-[6188.source.service2]
+[6188.source.proxy2]
+source_type = "proxy"                   # optional. Will try to recognize the source type by default.
 ip = "127.18.0.2"
 port = 40201
 ssl = false
-sni = "dev.bluemangoo.net"              # optional. The unset one is default.
 host = "dev.bluemangoo.net"             # optional, rewrite `Host` in request headers.
+sni = "dev.bluemangoo.net"              # optional. The unset one is default.
 headers_request = { }                   # optional and importable, add or replace the header in request
 headers_response = { }                  # optional and importable, add or replace the header in upstream response
-location = ["/"]                         # optional, see the documents.
+location = ["/"]                        # optional, see the documents.
 #rewrite = ["^/(.*) /service2/$1 break"] # optional, see the documents
 #fallback = ["services1"]                # optional, see the documents.
+
+[6199.source.static]
+source_type="static"
+root="/www/public/"                     # static file root. Relative path will be based on this file.
+#sni = "dev.bluemangoo.net"
+#headers_request = { }
+#headers_response = { }
+#location = ["/"]
+#rewrite = ["^/(.*) /service2/$1 break"]
+#fallback = ["services1"]

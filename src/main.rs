@@ -131,7 +131,7 @@ fn main() -> anyhow::Result<()> {
         let mut service_config: HashMap<String, HashMap<String, config::Source>> = HashMap::new();
 
         for source in i.1.source {
-            match &source.1.sni {
+            match source.1.sni_as_ref() {
                 None => {
                     if !service_config.contains_key("") {
                         service_config.insert(String::from(""), HashMap::new());
