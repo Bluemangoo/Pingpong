@@ -7,10 +7,13 @@ next: false
 
 Source is a config class, which configures the source of the server.
 
+It contains two types: `proxy` and `static`. Use `source_type` to specify the type.
+
 It is **importable**.
 
-## Config Items
+## Config Items(proxy)
 
+- `source_type`: **Optional**, if set must be `proxy`.
 - `ip`: Ip of upstream service, instead of domain.
 - `port`: Port of upstream service.
 - `ssl`: Whether upstream service is on ssl.
@@ -21,3 +24,16 @@ It is **importable**.
 - `location`: **Optional**, default to match all the requests, see [Location](../location).
 - `rewrite`: **Optional**, see [Rewrite](../rewrite).
 - `fallback`: **Optional**, fallback to other sources when available, only works when `check_status` is enabled. Fallback up to 10 times.
+
+## Config Items(static)
+
+- `source_type`: **Optional**, if set must be `static`.
+- `root`: Root directory of static files. Relative path will be based on this file.
+
+Following items are same as proxy:
+- `host`
+- `headers_request`
+- `headers_response`
+- `location`
+- `rewrite`
+- `fallback`
