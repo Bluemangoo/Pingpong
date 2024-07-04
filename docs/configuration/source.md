@@ -30,7 +30,7 @@ It is **importable**.
 - `source_type`: **Optional**, if set must be `static`.
 - `root`: Root directory of static files. Relative path will be based on this file.
 
-Following items are same as proxy:
+Following items are same as [proxy](#config-items-proxy):
 - `host`
 - `headers_request`
 - `headers_response`
