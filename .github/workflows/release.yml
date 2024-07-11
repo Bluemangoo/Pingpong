@@ -104,8 +104,6 @@ jobs:
       - name: Cross build
         if: ${{ matrix.cross }}
         run: cross build --profile minimum --target ${{ matrix.target }}
-      - name: Strip
-        run: strip -s target/${{ matrix.target }}/minimum/pingpong
       - name: Pack
         run: |
           mkdir target/pingpong || rm -rf target/pingpong/*
