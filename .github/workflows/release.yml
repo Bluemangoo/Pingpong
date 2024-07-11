@@ -95,7 +95,7 @@ jobs:
       - name: Install minimal nightly
         uses: actions-rs/toolchain@v1
         with:
-          profile: minimum
+          profile: minimal
           toolchain: nightly
       - name: Install cross
         if: ${{ matrix.cross }}
