@@ -2,6 +2,7 @@ name: Release
 
 on:
   push:
+    branches: ["master"]
   workflow_dispatch:
 
 permissions:
@@ -21,13 +22,12 @@ jobs:
       - name: Check git tag
         run: |
           version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
-          # git rev-parse $version || exit 0
-          # exit 1
+          git rev-parse $version || exit 0
+          exit 1
   build:
     runs-on: ${{ matrix.host_os }}
     if: ${{ contains(github.event.commits[0].message, '+release') }}
     needs: check
-    continue-on-error: true
     strategy:
       matrix:
         target:
@@ -64,7 +64,7 @@ jobs:
 
           - target: i686-unknown-linux-gnu
             host_os: ubuntu-latest
-            cross: true
+            packages: "gcc-multilib libc6-dev-i386"
 
           - target: i686-unknown-linux-musl
             host_os: ubuntu-latest
@@ -75,11 +75,11 @@ jobs:
 
           - target: x86_64-unknown-linux-musl
             host_os: ubuntu-latest
-            cross: true
+            packages: "musl-tools"
 
           - target: x86_64-unknown-linux-gnu
             host_os: ubuntu-latest
-            cross: true
+            packages: ""
     steps:
       - uses: actions/checkout@v4
       - name: Install deps
@@ -116,33 +116,33 @@ jobs:
         with:
           name: pingpong-${{ matrix.target }}
           path: target/pingpong/pingpong-${{ matrix.target }}.zip
-  # release:
-  #   needs: build
-  #   runs-on: ubuntu-latest
-  #   if: ${{ contains(github.event.commits[0].message, '+release') }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #       with:
-  #         fetch-depth: 0
-  #     - name: Download artifacts
-  #       uses: actions/download-artifact@v4
-  #       with:
-  #         path: artifacts
-  #         merge-multiple: true
-  #     - name: Generate release info and tag
-  #       run: |
-  #         version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
-  #         echo "version=$version">>$GITHUB_ENV
-  #         release_info=release.md
-  #         echo "release_info=$release_info">>$GITHUB_ENV
-  #         echo "## Commits" > $release_info
-  #         number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
-  #         echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
-  #     - name: Create Release
-  #       uses: ncipollo/release-action@v1.12.0
-  #       with:
-  #         artifacts: artifacts/*
-  #         bodyFile: ${{ env.release_info }}
-  #         tag: ${{ env.version }}
-  #         name: ${{ env.version }}
-  #         makeLatest: true
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.commits[0].message, '+release') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+      - name: Generate release info and tag
+        run: |
+          version=$(grep version Cargo.toml -m 1 | cut -d'=' -f2 | tr -d "\r" | tr -d ' ' | tr -d '"' | tr -d "'")
+          echo "version=$version">>$GITHUB_ENV
+          release_info=release.md
+          echo "release_info=$release_info">>$GITHUB_ENV
+          echo "## Commits" > $release_info
+          number=$(git log --oneline $(git rev-parse `git describe --tags --abbrev=0`)..HEAD | wc -l)
+          echo "$(git log --pretty='- [%h] %s' -$number)" >> $release_info
+      - name: Create Release
+        uses: ncipollo/release-action@v1.12.0
+        with:
+          artifacts: artifacts/*
+          bodyFile: ${{ env.release_info }}
+          tag: ${{ env.version }}
+          name: ${{ env.version }}
+          makeLatest: true
