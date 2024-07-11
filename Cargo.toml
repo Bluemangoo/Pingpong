@@ -17,3 +17,9 @@ anyhow = "1.0.82"
 regex = "1.10.4"
 http = "1.1.0"
 urlencoding = "2.1.3"
+
+[profile.minimum]
+inherits = "release"
+lto = true
+opt-level = 'z'
+codegen-units = 1
