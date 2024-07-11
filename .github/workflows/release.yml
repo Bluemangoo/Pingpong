@@ -92,6 +92,11 @@ jobs:
         with:
           key: v0-rust-build-${{ matrix.target }}
           cache-all-crates: true
+      - name: Install minimal nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimum
+          toolchain: nightly
       - name: Install cross
         if: ${{ matrix.cross }}
         run: cargo install cross
