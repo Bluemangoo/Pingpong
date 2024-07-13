@@ -100,14 +100,14 @@ jobs:
         run: rustup target add ${{ matrix.target }}
       - name: Build
         if: ${{ !matrix.cross }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: cargo build --profile minimum --target ${{ matrix.target }}
       - name: Cross build
         if: ${{ matrix.cross }}
-        run: cross build --release --target ${{ matrix.target }}
+        run: cross build --profile minimum --target ${{ matrix.target }}
       - name: Pack
         run: |
           mkdir target/pingpong || rm -rf target/pingpong/*
-          mv target/${{ matrix.target }}/release/pingpong target/pingpong/pingpong
+          mv target/${{ matrix.target }}/minimum/pingpong target/pingpong/pingpong
           cp -r config target/pingpong/config
           cd target/pingpong
           zip -r pingpong-${{ matrix.target }}.zip *

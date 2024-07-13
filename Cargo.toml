@@ -18,3 +18,9 @@ regex = "1.10.4"
 http = "1.1.0"
 urlencoding = "2.1.3"
 once_cell = "1.19.0"
+
+[profile.minimum]
+inherits = "release"
+lto = true
+opt-level = 'z'
+codegen-units = 1
