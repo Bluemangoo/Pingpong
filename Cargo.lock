@@ -1307,6 +1307,7 @@ dependencies = [
  "async-trait",
  "http 1.1.0",
  "log",
+ "once_cell",
  "pingora",
  "regex",
  "serde",

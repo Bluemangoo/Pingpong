@@ -1,10 +1,34 @@
-use std::{fs, io};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
+use std::{fs, io};
 
 pub fn resolve(base: &str, path: &str) -> String {
-    let base_path = Path::new(base).parent().unwrap();
+    let base_path = if base.ends_with('/') {
+        Path::new(&base[..base.len() - 1])
+    } else {
+        Path::new(base).parent().unwrap()
+    };
+    let path_path = Path::new(path);
+
+    if path_path.is_relative() {
+        String::from(base_path.join(path_path).to_str().unwrap())
+    } else {
+        String::from(path_path.to_path_buf().to_str().unwrap())
+    }
+}
+
+pub fn resolve_uri(base: &str, path: &str) -> String {
+    let base_path = if base.ends_with('/') {
+        Path::new(&base[..base.len() - 1])
+    } else {
+        Path::new(base).parent().unwrap()
+    };
+
+    if path.starts_with('/') {
+        return String::from(base_path.join(&path[1..]).to_str().unwrap());
+    }
+
     let path_path = Path::new(path);
 
     if path_path.is_relative() {

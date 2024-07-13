@@ -1,11 +1,15 @@
-use std::collections::HashMap;
 use pingora::{Error, HTTPStatus};
-use crate::config::{Location, RewriteFlag, Source};
+use std::collections::HashMap;
+use std::path::Path;
+
+use crate::config::{Location, Proxy, Source, StaticServer};
 use crate::gateway::GatewayCTX;
+use crate::util::path;
 
 pub fn match_route(uri: &str, source: &Source) -> bool {
-    for location in &source.location {
-        if match location {
+    let location = source.location_as_ref();
+    for loc in location {
+        if match loc {
             Location::Start(l) => uri.starts_with(l),
             Location::Equal(l) => uri.eq(l),
             Location::Regex(re) => re.is_match(uri),
@@ -26,14 +30,18 @@ pub fn find_route_with_start<'a>(
 ) -> pingora::Result<((&'a String, &'a Source), String)> {
     let mut uri = String::from(uri);
     let mut result: Option<pingora::Result<((&'a String, &'a Source), String)>> = None;
-    if let Some(rewrites) = &starts_from.1.rewrite {
+    if let Some(rewrites) = &starts_from.1.rewrite_as_ref() {
         for rewrite in rewrites {
             if result.is_some() {
                 break;
             }
-            if rewrite.0.is_match(&uri) {
-                uri = rewrite.0.replace_all(&uri, &rewrite.1).to_string();
-                if let RewriteFlag::Last = rewrite.2 {
+            if rewrite.regex_as_ref().is_match(&uri) {
+                uri = rewrite
+                    .regex_as_ref()
+                    .replace_all(&uri, rewrite.replace_as_ref())
+                    .to_string();
+
+                if rewrite.is_last() {
                     result = Some(find_route(sni, &uri, routes, depth + 1, ctx));
                     break;
                 }
@@ -81,11 +89,26 @@ pub fn find_route<'a>(
     }
 }
 
-pub fn check_status(source: &Source) -> bool {
+pub fn check_proxy_status(source: &Proxy) -> bool {
     if let Some(lb) = &source.load_balancer {
-        if lb.select(b"", 256).is_some() {
-            return true;
-        }
+        return lb.select(b"", 256).is_some();
     }
-    false
+    true
+}
+
+pub fn check_static_status(source: &StaticServer, path: &str) -> bool {
+    let path = path.split('?').collect::<Vec<&str>>()[0];
+    let path = if path.ends_with('/') {
+        format!("{}index.html", path)
+    } else {
+        path.to_string()
+    };
+    Path::new(&path::resolve_uri(&source.root, &path)).exists()
+}
+
+pub fn check_status(source: &Source, path: &str) -> bool {
+    match source {
+        Source::Proxy(proxy) => check_proxy_status(proxy),
+        Source::Static(static_server) => check_static_status(static_server, path),
+    }
 }

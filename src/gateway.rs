@@ -1,8 +1,10 @@
-use crate::config::Source;
+use crate::config::{Proxy, Source};
+use crate::util::mime::get_mime_type;
+use crate::util::path;
 use crate::util::route::*;
 use crate::util::url::encode_ignore_slash;
 use async_trait::async_trait;
-use http::Uri;
+use http::{header, StatusCode, Uri};
 use log::{error, info};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
@@ -31,18 +33,18 @@ impl Gateway {
         }
     }
 
-    fn peer(&self, source: (&String, &Source)) -> Box<HttpPeer> {
-        let addr = (source.1.ip.as_str(), source.1.port);
+    fn peer(&self, source: &Proxy) -> Box<HttpPeer> {
+        let addr = (source.ip.as_str(), source.port);
 
-        let domain = match &source.1.host {
+        let domain = match &source.host {
             Some(domain) => domain.clone(),
-            None => source.1.ip.clone(),
+            None => source.ip.clone(),
         };
 
         let mut addrs_iter = addr.to_socket_addrs().unwrap();
         let addr = addrs_iter.next().unwrap();
 
-        let mut peer = HttpPeer::new(addr, source.1.ssl, domain);
+        let mut peer = HttpPeer::new(addr, source.ssl, domain);
 
         peer.options.connection_timeout = Some(Duration::new(3, 0));
 
@@ -70,6 +72,39 @@ impl ProxyHttp for Gateway {
         session: &mut Session,
         ctx: &mut Self::CTX,
     ) -> pingora::Result<Box<HttpPeer>> {
+        let header: &mut RequestHeader = session.req_header_mut();
+        if let Some(sni) = &ctx.sni {
+            if let Some(s) = &ctx.source {
+                let source: &Source = self.routes.get(sni).unwrap().get(s).unwrap();
+                let source = match source {
+                    Source::Proxy(proxy) => proxy,
+                    Source::Static(_) => Err(Error::new(HTTPStatus(502)))?,
+                };
+
+                if let Some(domain) = &source.host {
+                    header.insert_header("Host", domain)?;
+                };
+
+                if let Some(heads) = &source.headers_request {
+                    for head in heads {
+                        header.insert_header(String::from(head.0), head.1)?;
+                    }
+                }
+
+                let peer = self.peer(source);
+
+                return Ok(peer);
+            }
+        };
+
+        Err(Error::new(HTTPStatus(502)))
+    }
+
+    async fn request_filter(
+        &self,
+        session: &mut Session,
+        ctx: &mut Self::CTX,
+    ) -> pingora::Result<bool> {
         let sni = match session.downstream_session.get_header("Host") {
             None => String::from(""),
             Some(host) => String::from(host.to_str().unwrap()),
@@ -88,10 +123,10 @@ impl ProxyHttp for Gateway {
                     })?;
 
                 for _ in 0..10 {
-                    if check_status(re.0 .1) {
+                    if check_status(re.0 .1, re.1.as_str()) {
                         break;
                     } else {
-                        for fallback in &re.0 .1.fallback {
+                        for fallback in re.0 .1.fallback_as_ref() {
                             re = find_route_with_start(
                                 &sni,
                                 &re.1,
@@ -112,7 +147,7 @@ impl ProxyHttp for Gateway {
                                     },
                                 ),
                             )?;
-                            if check_status(re.0 .1) {
+                            if check_status(re.0 .1, re.1.as_str()) {
                                 break;
                             }
                         }
@@ -167,25 +202,39 @@ impl ProxyHttp for Gateway {
                 })?,
         );
 
-        if let Some(domain) = &source.1.host {
-            header.insert_header("Host", domain)?;
-        };
+        match source.1 {
+            Source::Proxy(_) => {}
+            Source::Static(source) => {
+                let mut file_path = path::resolve_uri(&source.root, uri.as_str());
+                file_path = file_path.split('?').collect::<Vec<&str>>()[0].to_string();
+                if file_path.ends_with('/') {
+                    file_path = format!("{}index.html", file_path)
+                }
+                let file = match std::fs::read(&file_path) {
+                    Ok(file) => file,
+                    Err(_) => {
+                        return Err(Error::explain(
+                            HTTPStatus(StatusCode::NOT_FOUND.into()),
+                            "file not found",
+                        ))
+                    }
+                };
 
-        if let Some(heads) = &source.1.headers_request {
-            for head in heads {
-                header.insert_header(String::from(head.0), head.1)?;
+                let content_length = file.len();
+
+                let mut resp = ResponseHeader::build(StatusCode::OK, Some(4)).unwrap();
+                resp.insert_header(header::SERVER, "Pingpong").unwrap();
+                resp.insert_header(header::CONTENT_LENGTH, content_length.to_string())
+                    .unwrap();
+                resp.insert_header(header::CONTENT_TYPE, get_mime_type(&file_path))
+                    .unwrap();
+                session.write_response_header(Box::new(resp)).await.unwrap();
+
+                session.write_response_body(file.into()).await.unwrap();
+                return Ok(true);
             }
         }
 
-        let peer = self.peer(source);
-        Ok(peer)
-    }
-
-    async fn request_filter(
-        &self,
-        _session: &mut Session,
-        _ctx: &mut Self::CTX,
-    ) -> pingora::Result<bool> {
         Ok(false)
     }
 
@@ -201,14 +250,11 @@ impl ProxyHttp for Gateway {
         // replace any existing header
         upstream_response.insert_header("Server", "Pingpong")?;
 
-        // doesnt support h3
-        upstream_response.remove_header("alt-svc");
-
         if let Some(sni) = &ctx.sni {
             if let Some(s) = &ctx.source {
                 let source: &Source = self.routes.get(sni).unwrap().get(s).unwrap();
 
-                if let Some(heads) = &source.headers_response {
+                if let Some(heads) = &source.headers_response_as_ref() {
                     for head in heads {
                         upstream_response.insert_header(String::from(head.0), head.1)?;
                     }
