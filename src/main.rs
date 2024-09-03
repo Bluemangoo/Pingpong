@@ -180,6 +180,5 @@ fn main() -> anyhow::Result<()> {
         server.add_service(service)
     }
 
-    server.run_forever();
-    Ok(())
+    server.run_forever()
 }

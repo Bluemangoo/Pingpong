@@ -228,9 +228,9 @@ impl ProxyHttp for Gateway {
                     .unwrap();
                 resp.insert_header(header::CONTENT_TYPE, get_mime_type(&file_path))
                     .unwrap();
-                session.write_response_header(Box::new(resp)).await.unwrap();
+                session.write_response_header(Box::new(resp), false).await.unwrap();
 
-                session.write_response_body(file.into()).await.unwrap();
+                session.write_response_body(Some(file.into()), true).await.unwrap();
                 return Ok(true);
             }
         }
