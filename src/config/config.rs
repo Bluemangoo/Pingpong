@@ -3,16 +3,10 @@ use pingora::server::configuration::ServerConf;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
-#[derive(Deserialize, Clone)]
-pub struct Log {
-    pub access: Option<String>,
-    pub error: Option<String>,
-}
-
 #[derive(Clone)]
 pub struct Config {
     pub server: HashMap<String, Server>,
-    pub log: Log,
+    pub log: Option<String>,
     pub version: Option<usize>,
     pub pid_file: Option<String>,
     pub upgrade_sock: Option<String>,
@@ -32,7 +26,7 @@ pub struct Config {
 #[derive(Deserialize)]
 pub struct ConfigRaw {
     pub server: Importable<HashMap<String, Importable<ServerRaw>>>,
-    pub log: Log,
+    pub log: Option<String>,
     pub version: Option<usize>,
     pub pid_file: Option<String>,
     pub upgrade_sock: Option<String>,

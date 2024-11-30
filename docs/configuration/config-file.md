@@ -28,6 +28,5 @@ See examples [here](https://github.com/Bluemangoo/Pingpong/tree/master/config).
 - `ca_file`: **Optional**, The path to the root CA file;
 - `work_stealing`: **Optional**, Enable work stealing runtime (default true). See Pingora runtime (WIP) section for more info;
 - `upstream_keepalive_pool_size`: **Optional**, The number of total connections to keep in the connection pool.
-- `log.access`: **Optional**, The path to the access log file, default to terminal;
-- `log.error`: **Optional**, The path to the error log file, default to terminal;
+- `log`: **Optional**, The path to the log file, default to terminal;
 - `server`: `Map<Port, Server>`, **Importable**, port is filled as a string but will be converted to `u16`. See `Server`'s definition [here](../server).

@@ -78,47 +78,32 @@ fn main() -> anyhow::Result<()> {
         config::Config::from_raw(c.0, &c.1)?
     };
 
-    #[inline(always)]
-    fn create_log(
-        level: LevelFilter,
-        path: &Option<String>,
-    ) -> anyhow::Result<Box<dyn SharedLogger>> {
-        let path = match path {
-            None => None,
-            Some(path) => {
-                let path = path::resolve(env::current_exe()?.to_str().unwrap(), path);
-                match path::create(&path) {
-                    Ok(_) => Some(path),
-                    Err(error) => {
-                        println!("{}", error);
-                        println!(
-                            "Failed to init {} logger, fallback to terminal.",
-                            level.as_str()
-                        );
-                        None
-                    }
+    match match &config.log {
+        None => None,
+        Some(path) => {
+            let path = path::resolve(env::current_exe()?.to_str().unwrap(), path);
+            match path::create(&path) {
+                Ok(_) => Some(path),
+                Err(error) => {
+                    println!("{}", error);
+                    println!("Failed to init logger, fallback to terminal.");
+                    None
                 }
             }
-        };
-        match path {
-            Some(path) => Ok(WriteLogger::new(
-                level,
-                Config::default(),
-                OpenOptions::new().append(true).open(path)?,
-            )),
-            None => Ok(TermLogger::new(
-                level,
-                Config::default(),
-                TerminalMode::Mixed,
-                ColorChoice::Auto,
-            )),
         }
-    }
-
-    CombinedLogger::init(vec![
-        create_log(LevelFilter::Info, &config.log.access)?,
-        create_log(LevelFilter::Error, &config.log.error)?,
-    ])?;
+    } {
+        Some(path) => WriteLogger::init(
+            LevelFilter::Info,
+            Config::default(),
+            OpenOptions::new().append(true).open(path)?,
+        )?,
+        None => TermLogger::init(
+            LevelFilter::Info,
+            Config::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        )?,
+    };
 
     let mut server = Server::new(command_opts.base_opts)?;
 

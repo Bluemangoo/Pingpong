@@ -220,8 +220,7 @@ impl ProxyHttp for Gateway {
                 let file = match std::fs::read(&file_path) {
                     Ok(file) => file,
                     Err(_) => {
-                        error!("File not exist: {}", &file_path);
-                        info!("File not exist: {}", &file_path);
+                        error!("File not exist: \"{}\"", &file_path);
                         file_path = path::resolve_uri(&source.root, "/404.html");
                         status = StatusCode::NOT_FOUND;
                         std::fs::read(&file_path).unwrap_or_else(|_| Vec::from(PAGE404))

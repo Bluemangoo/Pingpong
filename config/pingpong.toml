@@ -10,9 +10,7 @@
 # work_stealing = true                    # Optional, Enable work stealing runtime (default true). See Pingora runtime (WIP) section for more info
 # upstream_keepalive_pool_size = 1        # Optional, The number of total connections to keep in the connection pool
 
-[log]
-access = "/var/log/pingpong/access.log" # optional.
-error = "/var/log/pingpong/error.log"   # optional.
+log = "/var/log/pingpong.log" # optional.
 
 [server] # importable structure, see server.toml
 import = "server.toml"
