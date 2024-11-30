@@ -1,5 +1,5 @@
 use crate::config::{Proxy, Source};
-use crate::util::file_err::PAGE404;
+use crate::util::file_err::{make_page50x, PAGE404};
 use crate::util::mime::get_mime_type;
 use crate::util::path;
 use crate::util::route::*;
@@ -142,7 +142,8 @@ impl ProxyHttp for Gateway {
                                                 "[{}]: Failed to find fallback source {}",
                                                 self.port, fallback
                                             );
-                                            Err(Error::new(HTTPStatus(502)))?
+                                            return make_page50x(session, StatusCode::BAD_GATEWAY)
+                                                .await;
                                         }
                                     },
                                 ),
@@ -177,8 +178,9 @@ impl ProxyHttp for Gateway {
         );
 
         header.set_uri(
-            decode(&uri)
-                .map_err(|e| {
+            match match decode(&uri) {
+                Ok(uri) => uri,
+                Err(e) => {
                     error!(
                         "[{}.{}]: Failed to parse rewritten uri: {}, {}",
                         self.port,
@@ -186,11 +188,14 @@ impl ProxyHttp for Gateway {
                         &uri,
                         e.to_string()
                     );
-                    Error::new(HTTPStatus(502))
-                })?
-                .into_owned()
-                .parse::<Uri>()
-                .map_err(|e| {
+                    return make_page50x(session, StatusCode::BAD_GATEWAY).await;
+                }
+            }
+            .into_owned()
+            .parse::<Uri>()
+            {
+                Ok(uri) => uri,
+                Err(e) => {
                     error!(
                         "[{}.{}]: Failed to parse rewritten uri: {}, {}",
                         self.port,
@@ -198,8 +203,9 @@ impl ProxyHttp for Gateway {
                         &uri,
                         e.to_string()
                     );
-                    Error::new(HTTPStatus(502))
-                })?,
+                    return make_page50x(session, StatusCode::BAD_GATEWAY).await;
+                }
+            },
         );
 
         match source.1 {
@@ -215,6 +221,7 @@ impl ProxyHttp for Gateway {
                     Ok(file) => file,
                     Err(_) => {
                         error!("File not exist: {}", &file_path);
+                        info!("File not exist: {}", &file_path);
                         file_path = path::resolve_uri(&source.root, "/404.html");
                         status = StatusCode::NOT_FOUND;
                         std::fs::read(&file_path).unwrap_or_else(|_| Vec::from(PAGE404))
@@ -262,5 +269,13 @@ impl ProxyHttp for Gateway {
         }
 
         Ok(())
+    }
+
+    async fn fail_to_proxy(&self, session: &mut Session, _e: &Error, _ctx: &mut Self::CTX) -> u16
+    where
+        Self::CTX: Send + Sync,
+    {
+        make_page50x(session, StatusCode::BAD_GATEWAY).await.unwrap();
+        502
     }
 }
