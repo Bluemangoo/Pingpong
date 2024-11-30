@@ -1,4 +1,5 @@
 use crate::config::{Proxy, Source};
+use crate::util::file_err::{make_page50x, PAGE404};
 use crate::util::mime::get_mime_type;
 use crate::util::path;
 use crate::util::route::*;
@@ -117,9 +118,8 @@ impl ProxyHttp for Gateway {
         let (source, uri) = {
             if self.check_status {
                 let mut re: ((&String, &Source), String) =
-                    find_route(&sni, &uri, &self.routes, 0, ctx).map_err(|e| {
+                    find_route(&sni, &uri, &self.routes, 0, ctx).inspect_err(|_| {
                         error!("[{}]: Failed to find route {}", self.port, &uri_raw);
-                        e
                     })?;
 
                 for _ in 0..10 {
@@ -142,7 +142,8 @@ impl ProxyHttp for Gateway {
                                                 "[{}]: Failed to find fallback source {}",
                                                 self.port, fallback
                                             );
-                                            Err(Error::new(HTTPStatus(502)))?
+                                            return make_page50x(session, StatusCode::BAD_GATEWAY)
+                                                .await;
                                         }
                                     },
                                 ),
@@ -177,8 +178,9 @@ impl ProxyHttp for Gateway {
         );
 
         header.set_uri(
-            decode(&uri)
-                .map_err(|e| {
+            match match decode(&uri) {
+                Ok(uri) => uri,
+                Err(e) => {
                     error!(
                         "[{}.{}]: Failed to parse rewritten uri: {}, {}",
                         self.port,
@@ -186,11 +188,14 @@ impl ProxyHttp for Gateway {
                         &uri,
                         e.to_string()
                     );
-                    Error::new(HTTPStatus(502))
-                })?
-                .into_owned()
-                .parse::<Uri>()
-                .map_err(|e| {
+                    return make_page50x(session, StatusCode::BAD_GATEWAY).await;
+                }
+            }
+            .into_owned()
+            .parse::<Uri>()
+            {
+                Ok(uri) => uri,
+                Err(e) => {
                     error!(
                         "[{}.{}]: Failed to parse rewritten uri: {}, {}",
                         self.port,
@@ -198,13 +203,15 @@ impl ProxyHttp for Gateway {
                         &uri,
                         e.to_string()
                     );
-                    Error::new(HTTPStatus(502))
-                })?,
+                    return make_page50x(session, StatusCode::BAD_GATEWAY).await;
+                }
+            },
         );
 
         match source.1 {
             Source::Proxy(_) => {}
             Source::Static(source) => {
+                let mut status = StatusCode::OK;
                 let mut file_path = path::resolve_uri(&source.root, uri.as_str());
                 file_path = file_path.split('?').collect::<Vec<&str>>()[0].to_string();
                 if file_path.ends_with('/') {
@@ -213,24 +220,23 @@ impl ProxyHttp for Gateway {
                 let file = match std::fs::read(&file_path) {
                     Ok(file) => file,
                     Err(_) => {
-                        return Err(Error::explain(
-                            HTTPStatus(StatusCode::NOT_FOUND.into()),
-                            "file not found",
-                        ))
+                        error!("File not exist: {}", &file_path);
+                        info!("File not exist: {}", &file_path);
+                        file_path = path::resolve_uri(&source.root, "/404.html");
+                        status = StatusCode::NOT_FOUND;
+                        std::fs::read(&file_path).unwrap_or_else(|_| Vec::from(PAGE404))
                     }
                 };
 
                 let content_length = file.len();
 
-                let mut resp = ResponseHeader::build(StatusCode::OK, Some(4)).unwrap();
-                resp.insert_header(header::SERVER, "Pingpong").unwrap();
-                resp.insert_header(header::CONTENT_LENGTH, content_length.to_string())
-                    .unwrap();
-                resp.insert_header(header::CONTENT_TYPE, get_mime_type(&file_path))
-                    .unwrap();
-                session.write_response_header(Box::new(resp), false).await.unwrap();
+                let mut resp = ResponseHeader::build(status, Some(4))?;
+                resp.insert_header(header::SERVER, "Pingpong")?;
+                resp.insert_header(header::CONTENT_LENGTH, content_length.to_string())?;
+                resp.insert_header(header::CONTENT_TYPE, get_mime_type(&file_path))?;
+                session.write_response_header(Box::new(resp), false).await?;
 
-                session.write_response_body(Some(file.into()), true).await.unwrap();
+                session.write_response_body(Some(file.into()), true).await?;
                 return Ok(true);
             }
         }
@@ -263,5 +269,13 @@ impl ProxyHttp for Gateway {
         }
 
         Ok(())
+    }
+
+    async fn fail_to_proxy(&self, session: &mut Session, _e: &Error, _ctx: &mut Self::CTX) -> u16
+    where
+        Self::CTX: Send + Sync,
+    {
+        make_page50x(session, StatusCode::BAD_GATEWAY).await.unwrap();
+        502
     }
 }
