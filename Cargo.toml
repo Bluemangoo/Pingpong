@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.80"
 log = "0.4.21"
-pingora = { version = "0.3.0", features = ["proxy", "lb"] }
+pingora = { version = "0.4.0", features = ["proxy", "lb"] }
 structopt = "0.3.26"
 toml = "0.8.12"
 serde = { version = "1.0.198", features = ["derive"] }
