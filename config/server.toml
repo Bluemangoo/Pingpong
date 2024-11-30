@@ -25,7 +25,7 @@ location = ["/"]                        # optional, see the documents.
 
 [6199.source.static]
 source_type="static"
-root="/www/public/"                     # static file root. Relative path will be based on this file.
+root="../html"                     # static file root. Relative path will be based on this file.
 #sni = "dev.bluemangoo.net"
 #headers_request = { }
 #headers_response = { }
