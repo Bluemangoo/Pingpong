@@ -54,8 +54,8 @@ struct CommandOpt {
 fn main() -> anyhow::Result<()> {
     let command_opts = CommandOpt::from_args();
 
-    if command_opts.base_opts.version {
-        println!("Pingpong {}", env!("CARGO_PKG_VERSION"));
+    if command_opts.version {
+        println!("Pingpong {}+{}", env!("CARGO_PKG_VERSION"), env!("GIT_REF"));
         return Ok(());
     }
 
