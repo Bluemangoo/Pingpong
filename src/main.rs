@@ -6,6 +6,7 @@ use crate::config::Importable;
 use crate::gateway::Gateway;
 use crate::util::path;
 use anyhow::anyhow;
+use log::debug;
 use pingora::prelude::*;
 use simplelog::*;
 use std::collections::HashMap;
@@ -26,8 +27,6 @@ pub struct Opt {
     pub nocapture: bool,
     #[structopt(short, long)]
     pub test: bool,
-    #[structopt(short, long)]
-    pub version: bool,
 }
 
 impl From<Opt> for Option<pingora::prelude::Opt> {
@@ -46,6 +45,11 @@ impl From<Opt> for Option<pingora::prelude::Opt> {
 struct CommandOpt {
     #[structopt(short = "c")]
     config: Option<String>,
+
+    #[structopt(long)]
+    pub debug: bool,
+    #[structopt(short, long)]
+    pub version: bool,
 
     #[structopt(flatten)]
     base_opts: Opt,
@@ -78,6 +82,12 @@ fn main() -> anyhow::Result<()> {
         config::Config::from_raw(c.0, &c.1)?
     };
 
+    let log_level = if command_opts.debug {
+        LevelFilter::Debug
+    } else {
+        LevelFilter::Info
+    };
+
     match match &config.log {
         None => None,
         Some(path) => {
@@ -93,12 +103,12 @@ fn main() -> anyhow::Result<()> {
         }
     } {
         Some(path) => WriteLogger::init(
-            LevelFilter::Info,
+            log_level,
             Config::default(),
             OpenOptions::new().append(true).open(path)?,
         )?,
         None => TermLogger::init(
-            LevelFilter::Info,
+            log_level,
             Config::default(),
             TerminalMode::Mixed,
             ColorChoice::Auto,
@@ -111,31 +121,27 @@ fn main() -> anyhow::Result<()> {
 
     server.bootstrap();
 
+    debug!("Pingpong bootstrapping");
     for i in config.server {
         let port = u16::from_str(&i.0)?;
+        debug!("Loading server on port {}", port);
         let mut service_config: HashMap<String, HashMap<String, config::Source>> = HashMap::new();
 
         for source in i.1.source {
-            match source.1.sni_as_ref() {
-                None => {
-                    if !service_config.contains_key("") {
-                        service_config.insert(String::from(""), HashMap::new());
-                    }
-                    service_config
-                        .get_mut("")
-                        .unwrap()
-                        .insert(source.0, source.1);
-                }
-                Some(sni) => {
-                    if !service_config.contains_key(sni) {
-                        service_config.insert(String::from(sni), HashMap::new());
-                    }
-                    service_config
-                        .get_mut(sni)
-                        .unwrap()
-                        .insert(source.0, source.1);
-                }
+            debug!("Loading source {}", source.0);
+            debug!("Source {}: {:?}", source.0, source.1);
+            let sni = match &source.1.sni_as_ref() {
+                None => "",
+                Some(sni) => sni,
+            };
+            if !service_config.contains_key(sni) {
+                service_config.insert(String::from(sni), HashMap::new());
             }
+            service_config
+                .get_mut(sni)
+                .unwrap()
+                .insert(source.0.clone(), source.1);
+            debug!("Source {} loaded", source.0);
         }
         let mut service = http_proxy_service(
             &server.configuration,
@@ -149,9 +155,11 @@ fn main() -> anyhow::Result<()> {
 
         match i.1.ssl {
             None => {
+                debug!("ssl disabled");
                 service.add_tcp(&format!("0.0.0.0:{}", port));
             }
             Some(ssl) => {
+                debug!("ssl enabled");
                 service
                     .add_tls(&format!("0.0.0.0:{}", port), &ssl.cert, &ssl.key)
                     .or(Err(anyhow!(
@@ -162,8 +170,10 @@ fn main() -> anyhow::Result<()> {
             }
         }
 
-        server.add_service(service)
+        server.add_service(service);
+        debug!("Server on port {} loaded", port);
     }
+    debug!("Pingpong bootstrapped");
 
     server.run_forever()
 }

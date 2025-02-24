@@ -6,7 +6,7 @@ use crate::util::route::*;
 use crate::util::url::encode_ignore_slash;
 use async_trait::async_trait;
 use http::{header, StatusCode, Uri};
-use log::{error, info};
+use log::{debug, error, info};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
 use pingora::{Error, HTTPStatus};
@@ -93,6 +93,7 @@ impl ProxyHttp for Gateway {
                 }
 
                 let peer = self.peer(source);
+                debug!("[{}]: Upstream peer: {:?}", self.port, peer);
 
                 return Ok(peer);
             }
@@ -125,32 +126,31 @@ impl ProxyHttp for Gateway {
                 for _ in 0..10 {
                     if check_status(re.0 .1, re.1.as_str()) {
                         break;
-                    } else {
-                        for fallback in re.0 .1.fallback_as_ref() {
-                            re = find_route_with_start(
-                                &sni,
-                                &re.1,
-                                &self.routes,
-                                0,
-                                ctx,
-                                (
-                                    fallback,
-                                    match self.routes.get(&sni).unwrap().get(fallback) {
-                                        Some(source) => source,
-                                        None => {
-                                            error!(
-                                                "[{}]: Failed to find fallback source {}",
-                                                self.port, fallback
-                                            );
-                                            return make_page50x(session, StatusCode::BAD_GATEWAY)
-                                                .await;
-                                        }
-                                    },
-                                ),
-                            )?;
-                            if check_status(re.0 .1, re.1.as_str()) {
-                                break;
-                            }
+                    }
+                    for fallback in re.0 .1.fallback_as_ref() {
+                        re = find_route_with_start(
+                            &sni,
+                            &re.1,
+                            &self.routes,
+                            0,
+                            ctx,
+                            (
+                                fallback,
+                                match self.routes.get(&sni).unwrap().get(fallback) {
+                                    Some(source) => source,
+                                    None => {
+                                        error!(
+                                            "[{}]: Failed to find fallback source {}",
+                                            self.port, fallback
+                                        );
+                                        return make_page50x(session, StatusCode::BAD_GATEWAY)
+                                            .await;
+                                    }
+                                },
+                            ),
+                        )?;
+                        if check_status(re.0 .1, re.1.as_str()) {
+                            break;
                         }
                     }
                 }
@@ -274,7 +274,9 @@ impl ProxyHttp for Gateway {
     where
         Self::CTX: Send + Sync,
     {
-        make_page50x(session, StatusCode::BAD_GATEWAY).await.unwrap();
+        make_page50x(session, StatusCode::BAD_GATEWAY)
+            .await
+            .unwrap();
         502
     }
 }

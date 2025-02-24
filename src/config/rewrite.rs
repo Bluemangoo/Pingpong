@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use regex::Regex;
 
 #[derive(Clone)]
+#[derive(Debug)]
 pub enum Rewrite {
     Last(Regex, String),
     Break(Regex, String),

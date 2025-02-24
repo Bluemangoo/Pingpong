@@ -3,6 +3,7 @@ use pingora::lb::health_check;
 use pingora::prelude::{background_service, LoadBalancer, RoundRobin};
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::fmt::{Debug, Formatter};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -21,6 +22,24 @@ pub struct Proxy {
     pub headers_response: Option<HashMap<String, String>>,
 }
 
+impl Debug for Proxy {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Proxy")
+            .field("ip", &self.ip)
+            .field("host", &self.host)
+            .field("port", &self.port)
+            .field("ssl", &self.ssl)
+            .field("load_balancer", &self.load_balancer.is_some())
+            .field("sni", &self.sni)
+            .field("location", &self.location)
+            .field("rewrite", &self.rewrite)
+            .field("fallback", &self.fallback)
+            .field("headers_request", &self.headers_request)
+            .field("headers_response", &self.headers_response)
+            .finish()
+    }
+}
+
 #[derive(Deserialize)]
 pub struct ProxyRaw {
     pub source_type: Option<String>,
@@ -36,13 +55,13 @@ pub struct ProxyRaw {
     pub headers_response: Option<Importable<HashMap<String, String>>>,
 }
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct Ssl {
     pub cert: String,
     pub key: String,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Server {
     pub source: HashMap<String, Source>,
     pub ssl: Option<Ssl>,
@@ -115,7 +134,7 @@ impl Proxy {
             None => None,
             Some(list) => Some({
                 let mut vec: Vec<Rewrite> = Vec::new();
-                list.iter().try_for_each(|v| -> anyhow::Result<()>{
+                list.iter().try_for_each(|v| -> anyhow::Result<()> {
                     vec.push(Rewrite::new(v.clone(), path)?);
                     Ok(())
                 })?;

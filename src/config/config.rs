@@ -3,7 +3,7 @@ use pingora::server::configuration::ServerConf;
 use serde::Deserialize;
 use std::{collections::HashMap, sync::Arc};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Config {
     pub server: HashMap<String, Server>,
     pub log: Option<String>,

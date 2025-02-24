@@ -3,7 +3,7 @@ use crate::util::path;
 use serde::Deserialize;
 use std::collections::HashMap;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StaticServer {
     pub root: String,
     pub sni: Option<String>,

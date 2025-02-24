@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for SourceRaw {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum Source {
     Proxy(Proxy),
     Static(StaticServer),

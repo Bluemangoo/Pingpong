@@ -7,6 +7,7 @@ next: false
 
 - `-v`: Print current version.
 - `-i`: The path to the configuration file (of Pingpong).
+- `--debug`: Log verbose debug information.
 
 Followings are for Pingora:
 
