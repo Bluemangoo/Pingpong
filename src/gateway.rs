@@ -9,6 +9,7 @@ use http::{header, StatusCode, Uri};
 use log::{debug, error, info};
 use pingora::http::{RequestHeader, ResponseHeader};
 use pingora::prelude::{HttpPeer, ProxyHttp, Session};
+use pingora::proxy::FailToProxy;
 use pingora::{Error, HTTPStatus};
 use std::collections::HashMap;
 use std::net::ToSocketAddrs;
@@ -270,13 +271,21 @@ impl ProxyHttp for Gateway {
         Ok(())
     }
 
-    async fn fail_to_proxy(&self, session: &mut Session, _e: &Error, _ctx: &mut Self::CTX) -> u16
+    async fn fail_to_proxy(
+        &self,
+        session: &mut Session,
+        _e: &Error,
+        _ctx: &mut Self::CTX,
+    ) -> FailToProxy
     where
         Self::CTX: Send + Sync,
     {
         make_page50x(session, StatusCode::BAD_GATEWAY)
             .await
             .unwrap();
-        502
+        FailToProxy {
+            error_code: 502,
+            can_reuse_downstream: true,
+        }
     }
 }
