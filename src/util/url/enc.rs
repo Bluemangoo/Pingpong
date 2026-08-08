@@ -1,36 +1,35 @@
 use std::borrow::Cow;
-use std::fmt;
 use std::str;
 
-/// Wrapper type that implements `Display`. Encodes on the fly, without allocating.
-/// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`. Assumes UTF-8 encoding.
-///
-/// ```rust
-/// use urlencoding::Encoded;
-/// format!("{}", Encoded("hello!"));
-/// ```
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
-#[repr(transparent)]
-pub struct Encoded<Str>(pub Str);
-
-impl<String: AsRef<[u8]>> fmt::Display for Encoded<String> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        encode_into(self.0.as_ref(), false, |s| f.write_str(s))?;
-        Ok(())
-    }
-}
+// /// Wrapper type that implements `Display`. Encodes on the fly, without allocating.
+// /// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`. Assumes UTF-8 encoding.
+// ///
+// /// ```rust
+// /// use urlencoding::Encoded;
+// /// format!("{}", Encoded("hello!"));
+// /// ```
+// #[derive(Copy, Clone, Debug, Eq, PartialEq, Hash, Ord, PartialOrd)]
+// #[repr(transparent)]
+// pub struct Encoded<Str>(pub Str);
+//
+// impl<String: AsRef<[u8]>> fmt::Display for Encoded<String> {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         encode_into(self.0.as_ref(), false, |s| f.write_str(s))?;
+//         Ok(())
+//     }
+// }
 
 /// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`. Assumes UTF-8 encoding.
 ///
 /// Call `.into_owned()` if you need a `String`
 #[inline(always)]
-pub fn encode_ignore_slash(data: &str) -> Cow<str> {
+pub fn encode_ignore_slash(data: &'_ str) -> Cow<'_, str> {
     encode_binary(data.as_bytes())
 }
 
 /// Percent-encodes every byte except alphanumerics and `-`, `_`, `.`, `~`, `/`, `?`, `&`.
 #[inline]
-fn encode_binary(data: &[u8]) -> Cow<str> {
+fn encode_binary(data: &'_ [u8]) -> Cow<'_, str> {
     // add maybe extra capacity, but try not to exceed allocator's bucket size
     let mut escaped = String::with_capacity(data.len() | 15);
     let unmodified = append_string(data, &mut escaped, true);
